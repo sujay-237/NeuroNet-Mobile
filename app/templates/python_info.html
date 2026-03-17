@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NEURO-NET | CORE SPECS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            background-color: #050505;
+            color: #0f0;
+            font-family: 'JetBrains Mono', monospace;
+            padding: 40px;
+            overflow-x: hidden;
+        }
+
+        /* --- SCANLINES & GLOW --- */
+        .crt::before {
+            content: " "; display: block; position: fixed; top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 2; background-size: 100% 2px, 3px 100%; pointer-events: none;
+        }
+        
+        h1 { color: #fff; text-shadow: 0 0 10px #fff; letter-spacing: 2px; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 30px; }
+
+        /* --- TERMINAL WINDOWS --- */
+        .terminal-panel {
+            background: rgba(10, 10, 10, 0.9); border: 1px solid #333; padding: 20px;
+            margin-bottom: 20px; box-shadow: 0 0 20px rgba(0, 255, 0, 0.05); height: 100%;
+        }
+        .panel-title { background: #111; color: #fff; padding: 5px 10px; font-size: 0.8rem; display: inline-block; margin-bottom: 15px; border: 1px solid #333; }
+
+        /* --- LIST STYLES --- */
+        ul { list-style: none; padding: 0; }
+        li { margin-bottom: 10px; border-left: 2px solid #333; padding-left: 10px; transition: 0.3s; }
+        li:hover { border-left-color: #0f0; color: #fff; text-shadow: 0 0 5px #0f0; }
+        .keyword { color: #bc13fe; font-weight: bold; }
+        .val { color: #00f3ff; }
+
+        /* --- ANIMATED CODE --- */
+        .code-stream { font-size: 0.7rem; color: #444; opacity: 0.7; }
+        .blink { animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        .btn-ret { 
+            border: 1px solid #333; color: #666; padding: 10px 20px; text-decoration: none; 
+            display: inline-block; margin-top: 20px; transition: 0.3s; position: relative; z-index: 10;
+        }
+        .btn-ret:hover { border-color: #fff; color: #fff; background: #111; }
+
+        /* --- MOBILE OPTIMIZATION --- */
+        @media (max-width: 768px) {
+            body { padding: 15px; }
+            h1 { font-size: 1.8rem; }
+            .d-flex.justify-content-between.align-items-end { 
+                flex-direction: column; align-items: flex-start !important; gap: 10px; 
+            }
+            .terminal-panel { padding: 15px; }
+            .row > div { margin-bottom: 15px; } /* Space out stacked columns */
+        }
+    </style>
+</head>
+<body class="crt">
+
+<div class="container" style="position: relative; z-index: 5;">
+    
+    <div class="d-flex justify-content-between align-items-end mb-4">
+        <h1>PYTHON KERNEL V3.12</h1>
+        <div style="text-align:right; font-size:0.8rem; color:#666;">
+            UPTIME: <span id="uptime-display" style="color:#0f0;">LOADING...</span><br>
+            MEM_USAGE: <span id="memory-display" style="color:#0f0;">ANALYZING...</span>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="terminal-panel">
+                <div class="panel-title">LOADED_LIBRARIES</div>
+                <ul>
+                    <li><span class="keyword">import</span> flask <span class="val"># Web Routing & Jinja2 Templates</span></li>
+                    <li><span class="keyword">import</span> google.genai <span class="val"># Gemini 2.5 Flash Integration</span></li>
+                    <li><span class="keyword">import</span> threading <span class="val"># OS Process Isolation (Sandboxing)</span></li>
+                    <li><span class="keyword">import</span> re <span class="val"># Regex Pattern Matching (IDS)</span></li>
+                    <li><span class="keyword">from</span> PIL <span class="keyword">import</span> Image <span class="val"># Steganography (LSB)</span></li>
+                    <li><span class="keyword">import</span> random <span class="val"># Entropy Generation (DPI)</span></li>
+                </ul>
+                
+                <div class="mt-4 panel-title">CUSTOM_MODULES</div>
+                <ul>
+                    <li><span class="val">core.ai_integrator</span> >> Neural Processing Unit</li>
+                    <li><span class="val">core.os_sim</span> >> Kernel Sandbox Manager</li>
+                    <li><span class="val">core.security_modules</span> >> Stego, IPS, DPI Engines</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="terminal-panel" style="border-color: var(--neon-purple); color: var(--neon-purple);">
+                <div class="panel-title" style="border-color: var(--neon-purple); color: var(--neon-purple);">KERNEL_LOG_STREAM</div>
+                <div class="code-stream" id="codeLog"></div>
+                <div class="mt-2">>_ <span class="blink">█</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="terminal-panel">
+                <div class="panel-title">SYSTEM_CAPABILITIES</div>
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <strong style="color:#fff;">ENCRYPTION</strong><br>
+                        <small>XOR Bitwise Logic with Salt Validation checks.</small>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <strong style="color:#fff;">AI ANALYSIS</strong><br>
+                        <small>Real-time intent scoring via Gemini 2.5 API.</small>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <strong style="color:#fff;">STEGANOGRAPHY</strong><br>
+                        <small>LSB Pixel Injection via Pillow Library.</small>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <strong style="color:#fff;">BEHAVIORAL</strong><br>
+                        <small>Keystroke Dynamics (WPM/Backspace) Profiling.</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-center">
+        <a href="/architecture" class="btn-ret">[ RETURN TO ARCHITECTURE ]</a>
+    </div>
+
+</div>
+
+<script>
+    // --- LIVE LOG TYPING EFFECT ---
+    const log = document.getElementById('codeLog');
+    const lines = [
+        "Initializing core.ai_integrator.NeuroAI()... OK",
+        "Loading specific signatures from core.structures.Trie...",
+        "Starting threading.Thread(target=sandbox_manager._process)...",
+        "[ENCRYPTOR] Validating salt checksum...",
+        "[DECRYPTOR] XOR transformation applied...",
+        "[DARK_WEB] Node relay handshake established (44ms)...",
+        "[STEGO] Encoding payload into RGB matrix...",
+        "[DPI] Calculating Shannon Entropy: 4.55 bits...",
+        "Garbage collection: freed 14 objects."
+    ];
+
+    function typeLog() {
+        let line = lines[Math.floor(Math.random() * lines.length)];
+        let entry = document.createElement('div');
+        entry.innerText = `[${new Date().toLocaleTimeString()}] ${line}`;
+        log.appendChild(entry);
+        if(log.children.length > 12) log.removeChild(log.firstChild);
+    }
+    setInterval(typeLog, 800);
+
+    // --- REAL-TIME STATS UPDATER ---
+    function updateStats() {
+        fetch('/api/stats')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('uptime-display').innerText = data.uptime;
+                document.getElementById('memory-display').innerText = data.memory;
+            })
+            .catch(err => console.error('Stats API Error:', err));
+    }
+    setInterval(updateStats, 1000);
+    updateStats(); 
+</script>
+
+</body>
+</html>

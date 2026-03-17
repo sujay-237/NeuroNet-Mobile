@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NEURO-NET | ADMIN COMMAND</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <script src="//unpkg.com/globe.gl"></script>
+    
+    <style>
+        /* --- VARIABLES --- */
+        :root {
+            --bg-dark: #020204;
+            --sidebar-bg: #050508;
+            --neon-blue: #00f3ff;
+            --neon-pink: #ff0055;
+            --neon-purple: #bc13fe;
+            --neon-green: #00ff9d;
+            --glass-panel: rgba(10, 20, 30, 0.85);
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: #fff;
+            font-family: 'Rajdhani', sans-serif;
+            overflow-x: hidden;
+            margin: 0;
+            display: flex; /* Sidebar layout */
+            min-height: 100vh;
+        }
+
+        /* --- BACKGROUND --- */
+        .cyber-grid {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: 
+                linear-gradient(transparent 0%, var(--bg-dark) 100%),
+                repeating-linear-gradient(0deg, transparent 0, transparent 40px, rgba(0, 243, 255, 0.03) 40px, rgba(0, 243, 255, 0.03) 41px),
+                repeating-linear-gradient(90deg, transparent 0, transparent 40px, rgba(0, 243, 255, 0.03) 40px, rgba(0, 243, 255, 0.03) 41px);
+            transform: perspective(500px) rotateX(45deg) scale(2);
+            animation: gridMove 20s linear infinite;
+            z-index: -2;
+        }
+        @keyframes gridMove { 0% { background-position: 0 0; } 100% { background-position: 0 1000px; } }
+
+        /* --- SIDEBAR --- */
+        .sidebar {
+            width: 250px;
+            background: var(--sidebar-bg);
+            border-right: 1px solid rgba(0, 243, 255, 0.2);
+            padding: 20px 0;
+            position: fixed;
+            height: 100vh;
+            z-index: 100;
+            box-shadow: 5px 0 15px rgba(0,0,0,0.8);
+        }
+        
+        .sidebar-logo-container {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .nav-link {
+            color: #888;
+            font-size: 1.1rem;
+            letter-spacing: 2px;
+            padding: 15px 25px;
+            transition: 0.3s;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+        }
+        .nav-link:hover, .nav-link.active {
+            color: var(--neon-blue);
+            background: rgba(0, 243, 255, 0.05);
+            border-left: 3px solid var(--neon-blue);
+            text-shadow: 0 0 10px rgba(0,243,255,0.5);
+        }
+
+        .main-content {
+            flex-grow: 1;
+            margin-left: 250px;
+            padding: 30px;
+            position: relative;
+            z-index: 10;
+        }
+
+        /* --- FLAT CARD SETTINGS --- */
+        .holo-card {
+            background: var(--glass-panel);
+            border: 1px solid rgba(0, 243, 255, 0.2);
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 25px;
+            position: relative;
+            transition: box-shadow 0.3s, border-color 0.3s; 
+            overflow: hidden; 
+        }
+
+        .holo-card:hover { z-index: 100; border-color: var(--neon-blue); }
+
+        .holo-card h5, .holo-card h6, .holo-card .display-1, .holo-card .progress { text-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+
+        /* --- TABLES --- */
+        .table-cyber { width: 100%; border-collapse: separate; border-spacing: 0 5px; }
+        .table-cyber th { color: var(--neon-blue); padding: 10px; border-bottom: 1px solid #333; }
+        .table-cyber td { background: rgba(255,255,255,0.05); padding: 12px; color: #ccc; }
+        
+        /* --- BUTTONS & BADGES --- */
+        .header-title { font-size: 2.2rem; font-weight: 700; letter-spacing: 4px; text-shadow: 0 0 15px var(--neon-blue); }
+        .btn-neon { background: transparent; border: 1px solid var(--neon-blue); color: var(--neon-blue); padding: 8px 20px; font-weight: bold; text-decoration: none; display: inline-block; transition: 0.3s; cursor: pointer;}
+        .btn-neon:hover { background: var(--neon-blue); color: black; box-shadow: 0 0 20px var(--neon-blue); }
+        .btn-danger { border-color: var(--neon-pink); color: var(--neon-pink); }
+        .btn-danger:hover { background: var(--neon-pink); color: white; box-shadow: 0 0 15px var(--neon-pink); }
+        .btn-success { border-color: var(--neon-green); color: var(--neon-green); }
+        .btn-success:hover { background: var(--neon-green); color: black; box-shadow: 0 0 15px var(--neon-green); }
+
+        .risk-high { color: var(--neon-pink); border: 1px solid var(--neon-pink); padding: 2px 8px; }
+        .risk-med { color: orange; border: 1px solid orange; padding: 2px 8px; }
+        .risk-low { color: var(--neon-green); border: 1px solid var(--neon-green); padding: 2px 8px; }
+
+        /* Hide Sections By Default */
+        .dashboard-section { display: none; animation: slideUpFade 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+        .dashboard-section.active { display: block; }
+
+        @keyframes slideUpFade { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Modal Customization */
+        .modal-content { background-color: var(--bg-dark); border: 1px solid var(--neon-blue); box-shadow: 0 0 20px rgba(0,243,255,0.3); }
+        .modal-header { border-bottom: 1px solid #333; }
+        .modal-footer { border-top: 1px solid #333; }
+        .form-control, .form-select { background: rgba(255,255,255,0.05); border: 1px solid #444; color: white; }
+        .form-control:focus, .form-select:focus { background: rgba(0,0,0,0.8); border-color: var(--neon-blue); color: white; box-shadow: 0 0 10px rgba(0,243,255,0.3); }
+        
+        /* --- MOBILE OPTIMIZATION --- */
+        @media (max-width: 992px) {
+            body { flex-direction: column; }
+            .sidebar {
+                width: 100%; height: auto; position: relative; border-right: none;
+                border-bottom: 1px solid var(--neon-blue); padding: 15px 10px;
+                display: flex; flex-direction: column; align-items: center;
+            }
+            .sidebar-logo-container { margin-bottom: 15px; display: flex; align-items: center; gap: 15px; }
+            .sidebar-logo-container img { width: 50px !important; height: 50px !important; }
+            .sidebar .nav {
+                flex-direction: row !important; flex-wrap: nowrap; overflow-x: auto;
+                width: 100%; padding-bottom: 10px; -ms-overflow-style: none; scrollbar-width: none;
+            }
+            .sidebar .nav::-webkit-scrollbar { display: none; }
+            .nav-item { white-space: nowrap; }
+            .nav-link { padding: 10px 15px; border-left: none; border-bottom: 3px solid transparent; }
+            .nav-link:hover, .nav-link.active { border-left: none; border-bottom: 3px solid var(--neon-blue); }
+            .sidebar > div[style*="position: absolute"] { position: relative !important; margin-top: 15px; }
+            
+            .main-content { margin-left: 0; padding: 15px; }
+            .header-title { font-size: 1.5rem; text-align: center; margin-bottom: 15px; }
+            .col-md-4.text-end { text-align: center !important; }
+            .table-cyber { white-space: nowrap; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="cyber-grid"></div>
+
+<div class="sidebar">
+    <div class="sidebar-logo-container">
+        <img src="{{ url_for('static', filename='logo.jpg') }}" style="width: 80px; height: 80px; border-radius: 50%; border: 2px solid var(--neon-blue); box-shadow: 0 0 20px var(--neon-blue); margin-bottom: 10px;">
+        <h4 style="color: white; letter-spacing: 3px;">NEURO-NET</h4>
+        <div style="color: var(--neon-blue); font-size: 0.7rem; letter-spacing: 2px;">ROOT COMMAND</div>
+    </div>
+
+    <ul class="nav flex-column">
+        <li class="nav-item">
+            <a class="nav-link active" id="nav-honeypot" onclick="switchSection('honeypot')">▶ HONEYPOT & THREATS</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="nav-users" onclick="switchSection('users')">▶ USER DIRECTORY</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="nav-activity" onclick="switchSection('activity')">▶ ACTIVITY STREAM</a>
+        </li>
+    </ul>
+
+    <div style="position: absolute; bottom: 30px; width: 100%; text-align: center;">
+        <a href="/logout" class="btn-neon btn-danger" style="font-size: 0.9rem;">TERMINATE SESSION</a>
+    </div>
+</div>
+
+<div class="main-content">
+    
+    <div class="row mb-4 align-items-center">
+        <div class="col-md-8">
+            <div class="header-title" id="top-title">HONEYPOT SYSTEMS</div>
+        </div>
+        <div class="col-md-4 text-end">
+             <a href="#" onclick="window.location.reload();" class="btn-neon">REFRESH DATA</a>
+        </div>
+    </div>
+
+    <div id="section-honeypot" class="dashboard-section active">
+        <div class="row">
+            <div class="col-lg-3">
+                <div class="holo-card" style="padding: 15px;">
+                    <div class="card-content text-center">
+                        <h6 style="color: var(--neon-blue); letter-spacing: 1px;">TOTAL THREATS</h6>
+                        <div class="display-4" style="font-weight: bold; color: #fff;">{{ attacks|length }}</div>
+                    </div>
+                </div>
+
+                <div class="holo-card" style="border-left: 4px solid var(--neon-pink); padding: 15px;">
+                    <div class="card-content">
+                        <h6 style="color: var(--neon-pink); letter-spacing: 1px;">OFFENDER PROFILE</h6>
+                        <div style="font-size: 1.2rem; font-weight: bold; color: white;">{{ dominant_profile }}</div>
+                    </div>
+                </div>
+
+                <div class="holo-card" style="padding: 0; height: 350px; overflow: hidden; position: relative; border-color: #bc13fe;">
+                    <div style="position: absolute; top: 10px; left: 10px; z-index: 10; color: #bc13fe; font-size: 0.7rem; font-weight: bold; background: rgba(0,0,0,0.5); padding: 5px;">
+                        DPI PACKET VISUALIZER
+                    </div>
+                    <div id="globeViz" style="width: 100%; height: 100%;"></div>
+                </div>
+            </div>
+
+            <div class="col-lg-9">
+                <div class="holo-card" style="min-height: 700px; padding: 30px;">
+                    <div class="card-content">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h4 style="margin:0; color:white; letter-spacing: 2px;">LIVE INCIDENT LOG</h4>
+                            <span style="font-family: 'JetBrains Mono'; font-size: 0.8rem; color: var(--neon-blue);">INTERCEPTING TRAFFIC...</span>
+                        </div>
+
+                        <div style="overflow-x: auto;">
+                            <table class="table-cyber">
+                                <thead>
+                                    <tr>
+                                        <th>IP ORIGIN</th>
+                                        <th>TIME</th>
+                                        <th>PAYLOAD</th>
+                                        <th>PROFILE</th>
+                                        <th>INTENT</th>
+                                        <th>RISK</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for attack in attacks %}
+                                    <tr>
+                                        <td style="color: var(--neon-purple); font-weight:bold;">{{ attack.ip }}</td>
+                                        <td>{{ attack.timestamp }}</td>
+                                        <td style="color: var(--neon-pink);">{{ attack.payload }}</td>
+                                        <td style="color: var(--neon-blue); font-weight: bold;">{{ attack.category }}</td>
+                                        <td>{{ attack.intent }}</td>
+                                        <td class="text-end">
+                                            {% if attack.score > 80 %} <span class="risk-high">{{ attack.score }}</span>
+                                            {% elif attack.score > 40 %} <span class="risk-med">{{ attack.score }}</span>
+                                            {% else %} <span class="risk-low">{{ attack.score }}</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% else %}
+                                    <tr><td colspan="6" class="text-center" style="padding: 50px; color: #555;">NO THREATS DETECTED</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="section-users" class="dashboard-section">
+        <div class="holo-card" style="border-top: 4px solid var(--neon-blue); min-height: 700px;">
+            <div class="card-content pointer-events-auto"> 
+                <div style="overflow-x: auto;">
+                    <table class="table-cyber" style="width: 100%;">
+                        <thead>
+                            <tr>
+                                <th>AGENT NAME</th>
+                                <th>EMAIL / IDENTIFIER</th>
+                                <th>SECURE COMMS</th>
+                                <th>SYSTEM STATUS</th>
+                                <th class="text-end">ADMIN ACTIONS</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in users %}
+                            <tr>
+                                <td style="color: white; font-weight: bold; font-size:1.1rem;">{{ user.name }}</td>
+                                <td style="font-family: 'JetBrains Mono'; color: #aaa;">{{ user.email }}</td>
+                                <td style="font-family: 'JetBrains Mono'; color: #aaa;">{{ user.phone }}</td>
+                                <td>
+                                    {% if user.status == 'approved' %}
+                                        <span style="color: var(--neon-green); font-weight: bold;">[ APPROVED ]</span>
+                                    {% else %}
+                                        <span style="color: orange; font-weight: bold;">[ PENDING ]</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end" style="pointer-events: auto;">
+                                    <button onclick="openEditModal('{{ user.email }}', '{{ user.name }}', '{{ user.phone }}', '{{ user.status }}')" class="btn-neon" style="margin-right: 5px;">EDIT</button>
+                                    
+                                    {% if user.status == 'pending' %}
+                                        <button onclick="adminAction('approve', '{{ user.email }}')" class="btn-neon btn-success" style="margin-right: 5px;">APPROVE</button>
+                                    {% endif %}
+                                    
+                                    <button onclick="adminAction('delete', '{{ user.email }}')" class="btn-neon btn-danger">PURGE</button>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="5" class="text-center" style="padding: 50px;">NO AGENTS FOUND</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="section-activity" class="dashboard-section">
+        <div class="holo-card" style="border-top: 4px solid var(--neon-purple); min-height: 700px;">
+            <div class="card-content">
+                <div style="overflow-x: auto;">
+                    <table class="table-cyber" style="width: 100%;">
+                        <thead>
+                            <tr>
+                                <th>TIMESTAMP (UTC)</th>
+                                <th>AGENT IDENTIFIER</th>
+                                <th>ACTION LOGGED</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for act in activities %}
+                            <tr>
+                                <td style="font-family: 'JetBrains Mono'; color: #888;">
+                                    {{ act.timestamp.replace('T', ' ').split('.')[0] if 'T' in act.timestamp else act.timestamp }}
+                                </td>
+                                <td style="color: var(--neon-blue); font-weight: bold; font-size:1.1rem;">{{ act.email }}</td>
+                                <td style="color: #ccc;">{{ act.action }}</td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="3" class="text-center" style="padding: 50px;">NO ACTIVITY LOGGED</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div> 
+
+<div class="modal fade" id="editUserModal" tabindex="-1" aria-hidden="true" style="pointer-events: auto;">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" style="color: var(--neon-blue); letter-spacing: 2px;">MODIFY AGENT RECORD</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+          <input type="hidden" id="editEmail">
+          
+          <div class="mb-3">
+              <label style="color: var(--neon-blue); font-size: 0.8rem; font-weight: bold;">AGENT NAME</label>
+              <input type="text" id="editName" class="form-control" style="font-family: 'JetBrains Mono';">
+          </div>
+          <div class="mb-3">
+              <label style="color: var(--neon-blue); font-size: 0.8rem; font-weight: bold;">SECURE COMMS (PHONE)</label>
+              <input type="text" id="editPhone" class="form-control" style="font-family: 'JetBrains Mono';">
+          </div>
+          <div class="mb-3">
+              <label style="color: var(--neon-blue); font-size: 0.8rem; font-weight: bold;">SYSTEM STATUS</label>
+              <select id="editStatus" class="form-select" style="font-family: 'JetBrains Mono';">
+                  <option value="pending">PENDING</option>
+                  <option value="approved">APPROVED</option>
+              </select>
+          </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-neon btn-danger" data-bs-dismiss="modal">CANCEL</button>
+        <button type="button" class="btn-neon btn-success" onclick="saveUserChanges()">COMMIT CHANGES</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+    // --- SIDEBAR NAVIGATION LOGIC ---
+    function switchSection(sectionId) {
+        document.querySelectorAll('.dashboard-section').forEach(sec => sec.classList.remove('active'));
+        document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+        document.getElementById('section-' + sectionId).classList.add('active');
+        document.getElementById('nav-' + sectionId).classList.add('active');
+        if(sectionId === 'honeypot') document.getElementById('top-title').innerText = "HONEYPOT SYSTEMS";
+        if(sectionId === 'users') document.getElementById('top-title').innerText = "USER DIRECTORY";
+        if(sectionId === 'activity') document.getElementById('top-title').innerText = "GLOBAL ACTIVITY STREAM";
+    }
+
+    function adminAction(action, email) {
+        if (action === 'delete') {
+            const confirmMsg = `WARNING: Purge agent ${email}?\n\nThis permanently deletes their account and entire secure vault data.`;
+            if (!confirm(confirmMsg)) return;
+        }
+        fetch(`/admin/${action}/${email}`, { method: 'POST' })
+        .then(res => res.json())
+        .then(data => {
+            if(data.status === "success") window.location.reload();
+            else alert("Action failed.");
+        });
+    }
+
+    let editModal;
+    document.addEventListener("DOMContentLoaded", function() {
+        editModal = new bootstrap.Modal(document.getElementById('editUserModal'));
+        document.querySelectorAll('.pointer-events-auto').forEach(el => {
+            el.addEventListener('mousemove', e => e.stopPropagation());
+        });
+    });
+
+    function openEditModal(email, name, phone, status) {
+        document.getElementById('editEmail').value = email;
+        document.getElementById('editName').value = name;
+        document.getElementById('editPhone').value = phone;
+        document.getElementById('editStatus').value = status;
+        editModal.show();
+    }
+
+    function saveUserChanges() {
+        const email = document.getElementById('editEmail').value;
+        const payload = {
+            name: document.getElementById('editName').value,
+            phone: document.getElementById('editPhone').value,
+            status: document.getElementById('editStatus').value
+        };
+
+        fetch(`/admin/edit_user/${email}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(data.status === "success") { window.location.reload(); } 
+            else { alert("Failed to modify user: " + data.message); }
+        });
+    }
+
+    // --- Initialize 3D Attack Globe ---
+    const arcData = {{ arcs|safe }};
+    const globeElement = document.getElementById('globeViz');
+    if (globeElement && arcData.length > 0) {
+        const world = Globe()
+            (globeElement)
+            .globeImageUrl('//unpkg.com/three-globe/example/img/earth-dark.jpg')
+            .backgroundColor('#050508')
+            .arcsData(arcData)
+            .arcColor('color')
+            .arcDashLength(0.4)
+            .arcDashGap(0.2)
+            .arcDashAnimateTime(1500)
+            .arcStroke(0.8);
+        fetch('https://raw.githubusercontent.com/vasturiano/globe.gl/master/example/datasets/ne_110m_admin_0_countries.geojson')
+            .then(res => res.json())
+            .then(countries => {
+                world.polygonsData(countries.features)
+                    .polygonCapColor(() => 'rgba(10, 20, 30, 0.6)') 
+                    .polygonSideColor(() => 'rgba(0, 243, 255, 0.05)') 
+                    .polygonStrokeColor(() => 'rgba(0, 243, 255, 0.5)'); 
+            });
+        world.controls().autoRotate = true;
+        world.controls().autoRotateSpeed = 1.5;
+        world.width(globeElement.clientWidth);
+        world.height(globeElement.clientHeight);
+    }
+</script>
+
+</body>
+</html>

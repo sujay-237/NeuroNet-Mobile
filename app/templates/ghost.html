@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>QUANTUM TARPIT | ISOLATION PROTOCOL</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #05050a;
+            --neon-cyan: #00f3ff;
+            --neon-magenta: #ff00ea;
+            --neon-purple: #9d00ff;
+            --glass-bg: rgba(10, 10, 20, 0.6);
+        }
+        
+        body { 
+            background-color: var(--bg-color); 
+            color: #fff; 
+            font-family: 'Rajdhani', sans-serif; 
+            margin: 0; 
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        /* Animated Vortex Background */
+        .vortex-bg {
+            position: fixed;
+            top: 50%; left: 50%;
+            width: 200vw; height: 200vw;
+            background: conic-gradient(from 0deg, transparent, var(--neon-purple), transparent, var(--neon-magenta), transparent, var(--neon-cyan), transparent);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            animation: spin 15s linear infinite;
+            opacity: 0.15;
+            z-index: -2;
+            filter: blur(80px);
+        }
+        @keyframes spin { 100% { transform: translate(-50%, -50%) rotate(360deg); } }
+
+        .grid-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: linear-gradient(rgba(0, 243, 255, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 243, 255, 0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+            z-index: -1;
+            transform: perspective(500px) rotateX(60deg);
+            transform-origin: bottom;
+            animation: gridMove 5s linear infinite;
+        }
+        @keyframes gridMove { 0% { background-position: 0 0; } 100% { background-position: 0 40px; } }
+
+        .terminal-container { 
+            background: var(--glass-bg);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(0, 243, 255, 0.3);
+            border-top: 4px solid var(--neon-magenta);
+            box-shadow: 0 0 50px rgba(157, 0, 255, 0.2), inset 0 0 20px rgba(0, 243, 255, 0.1);
+            padding: 40px; 
+            border-radius: 10px;
+            position: relative; 
+            z-index: 10; 
+            width: 800px;
+            max-width: 90vw;
+            text-align: center;
+        }
+
+        .header-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.2rem; 
+            color: transparent;
+            background: linear-gradient(90deg, var(--neon-cyan), var(--neon-magenta));
+            -webkit-background-clip: text;
+            text-shadow: 0 0 20px rgba(0, 243, 255, 0.4);
+            margin-bottom: 5px;
+            letter-spacing: 3px;
+            animation: pulseGlow 2s infinite alternate;
+        }
+
+        @keyframes pulseGlow {
+            0% { filter: drop-shadow(0 0 5px var(--neon-cyan)); }
+            100% { filter: drop-shadow(0 0 15px var(--neon-magenta)); }
+        }
+
+        .sys-info { 
+            color: #a0a0a0; 
+            font-size: 1rem; 
+            margin-bottom: 30px; 
+            border-bottom: 1px dashed rgba(255,255,255,0.2); 
+            padding-bottom: 20px;
+            letter-spacing: 1px;
+            display: flex;
+            justify-content: space-around;
+        }
+        
+        .sys-info span { color: var(--neon-cyan); font-weight: bold; }
+
+        /* Action Buttons */
+        .btn-group { display: flex; flex-direction: column; gap: 15px; margin-top: 20px; }
+        .tarpit-btn {
+            background: rgba(0,0,0,0.5); 
+            border: 1px solid var(--neon-cyan); 
+            color: var(--neon-cyan);
+            padding: 18px 20px; 
+            font-family: 'Orbitron', sans-serif; 
+            font-size: 1.1rem; 
+            cursor: pointer; 
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); 
+            position: relative;
+            overflow: hidden;
+            border-radius: 5px;
+            letter-spacing: 2px;
+        }
+        .tarpit-btn:hover { 
+            background: var(--neon-purple); 
+            color: #fff; 
+            border-color: var(--neon-magenta);
+            box-shadow: 0 0 30px var(--neon-purple); 
+            transform: scale(1.02);
+        }
+
+        /* Loader & Console */
+        #loader-wrapper { display: none; margin-top: 30px; padding: 20px; background: rgba(0,0,0,0.4); border-radius: 8px;}
+        .progress-bar { width: 100%; height: 10px; background: #111; border-radius: 5px; overflow: hidden; margin-bottom: 15px; position: relative; box-shadow: inset 0 0 5px #000;}
+        .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--neon-cyan), var(--neon-magenta)); transition: width 0.5s ease; box-shadow: 0 0 15px var(--neon-magenta);}
+        
+        #dynamic-text { font-size: 1.1rem; margin-bottom: 10px; color: var(--neon-cyan); font-family: 'Orbitron', sans-serif; }
+        #console-output { margin-top: 20px; font-size: 1.1rem; color: var(--neon-magenta); text-shadow: 0 0 10px var(--neon-magenta); white-space: pre-wrap; font-family: monospace; text-align: left;}
+        
+    </style>
+</head>
+<body>
+
+<div class="vortex-bg"></div>
+<div class="grid-overlay"></div>
+
+<div class="terminal-container">
+    <div class="header-title">QUANTUM ESCROW NODE</div>
+    <div class="sys-info">
+        <div>STATUS: <span>ISOLATED</span></div>
+        <div>ENCRYPTION: <span>AES-GCM-256</span></div>
+        <div>LATENCY: <span id="pingCounter">850</span>ms</div>
+    </div>
+
+    <div id="interface-core">
+        <p style="font-size: 1.2rem; color: #ccc; margin-bottom: 25px;">RESTRICTED ROOT ACCESS TERMINAL</p>
+        
+        <div class="btn-group">
+            <button class="tarpit-btn" onclick="executeTarpit('Vault', 'DECRYPTING STORAGE MATRIX')">EXTRACT_VAULT_CREDENTIALS</button>
+            <button class="tarpit-btn" onclick="executeTarpit('Admin Console', 'ESCALATING PRIVILEGES')">SUDO SU - ROOT</button>
+            <button class="tarpit-btn" onclick="executeTarpit('System Logs', 'DUMPING SYSTEM LOGS')">DUMP /VAR/LOG/AUTH.LOG</button>
+        </div>
+    </div>
+
+    <div id="loader-wrapper">
+        <div id="dynamic-text">INITIALIZING SEQUENCE...</div>
+        <div class="progress-bar"><div class="progress-fill" id="p-bar"></div></div>
+        <div id="console-output"></div>
+    </div>
+</div>
+
+<script>
+    // Fake high ping to subconsciously alert the attacker something is wrong/slow
+    setInterval(() => {
+        document.getElementById('pingCounter').innerText = Math.floor(Math.random() * (1500 - 900) + 900);
+    }, 2000);
+
+    const jargonList = [
+        "Bypassing Quantum Firewalls...",
+        "Injecting Payload into Neural Memory...",
+        "Cracking RSA-8192 Keys...",
+        "Overriding Node Access Control...",
+        "Resolving Encrypted Pointers...",
+        "Establishing Escrow Shell...",
+        "Evading Threat Detection Matrix...",
+        "Downloading Data Fragments..."
+    ];
+
+    function executeTarpit(target, commandName) {
+        document.getElementById('interface-core').style.display = 'none';
+        const loader = document.getElementById('loader-wrapper');
+        loader.style.display = 'block';
+        
+        const dynamicText = document.getElementById('dynamic-text');
+        const pBar = document.getElementById('p-bar');
+        const output = document.getElementById('console-output');
+        
+        output.innerText = "";
+        pBar.style.width = "0%";
+        dynamicText.innerText = `[ ${commandName} ]`;
+
+        let progress = 0;
+        let jargonIndex = 0;
+        
+        const loadingInterval = setInterval(() => {
+            if (jargonIndex < jargonList.length) {
+                dynamicText.innerText = `[${progress}%] ${jargonList[jargonIndex]}`;
+                jargonIndex++;
+            } else {
+                jargonIndex = 0;
+            }
+            
+            progress += Math.floor(Math.random() * 10) + 2;
+            if(progress > 98) progress = 98;
+            pBar.style.width = progress + "%";
+            
+        }, 1200);
+
+        fetch('/ghost/action', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: target})
+        })
+        .then(res => res.json())
+        .then(data => {
+            clearInterval(loadingInterval);
+            pBar.style.width = "100%";
+            dynamicText.innerText = "ACCESS DENIED / CONNECTION SEVERED";
+            
+            typeWriter(data.data || data.message, output, () => {
+                setTimeout(() => {
+                    loader.style.display = 'none';
+                    document.getElementById('interface-core').style.display = 'block';
+                }, 3500);
+            });
+        });
+    }
+
+    function typeWriter(text, element, callback) {
+        let i = 0;
+        element.innerHTML = "";
+        function type() {
+            if (i < text.length) {
+                element.innerHTML += text.charAt(i);
+                i++;
+                setTimeout(type, 20);
+            } else if(callback) {
+                callback();
+            }
+        }
+        type();
+    }
+</script>
+
+</body>
+</html>

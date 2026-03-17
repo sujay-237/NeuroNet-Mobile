@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NEURO-NET | DARK SEARCH</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --alert-red: #ff2a2a;
+            --dark-bg: #0a0000;
+        }
+        body {
+            background-color: var(--dark-bg); color: var(--alert-red);
+            font-family: 'JetBrains Mono', monospace; padding: 20px;
+            overflow-x: hidden; min-height: 100vh;
+        }
+
+        .glitch-header {
+            font-family: 'Rajdhani'; font-size: 3rem; font-weight: bold; text-align: center;
+            text-transform: uppercase; letter-spacing: 10px; text-shadow: 2px 0 #fff, -2px 0 #000;
+            animation: glitch-anim 2s infinite linear alternate-reverse;
+        }
+        @keyframes glitch-anim {
+            0% { clip-path: inset(10% 0 80% 0); } 20% { clip-path: inset(80% 0 10% 0); }
+            40% { clip-path: inset(40% 0 50% 0); } 60% { clip-path: inset(10% 0 60% 0); }
+            80% { clip-path: inset(30% 0 20% 0); } 100% { clip-path: inset(70% 0 10% 0); }
+        }
+
+        .search-container {
+            max-width: 800px; margin: 40px auto; border: 1px solid var(--alert-red);
+            padding: 5px; display: flex; box-shadow: 0 0 20px rgba(255, 42, 42, 0.2);
+        }
+        .search-input {
+            flex-grow: 1; background: #000; border: none; color: #fff; padding: 15px; font-size: 1.2rem; outline: none;
+        }
+        .search-btn {
+            background: var(--alert-red); color: #000; border: none; padding: 0 30px; font-weight: bold; cursor: pointer; transition: 0.3s;
+        }
+        .search-btn:hover { background: #fff; }
+
+        .results-area {
+            display: grid; grid-template-columns: 1fr 2fr; gap: 20px; max-width: 1200px; margin: 0 auto;
+        }
+        
+        .target-card {
+            border: 1px solid #333; padding: 20px; background: rgba(20,0,0,0.5);
+            animation: slideInLeft 0.8s ease-out;
+        }
+        .data-feed {
+            border: 1px solid #333; padding: 20px; background: #000; height: 400px; overflow-y: auto;
+            font-size: 0.85rem; color: #ccc;
+        }
+        
+        .leak-item {
+            border-bottom: 1px solid #222; padding: 10px 0; display: flex; justify-content: space-between;
+            animation: fadeIn 0.5s forwards; opacity: 0;
+        }
+        
+        .map-overlay {
+            width: 100%; height: 200px; background: 
+                linear-gradient(90deg, transparent 50%, rgba(255, 42, 42, 0.1) 50%),
+                linear-gradient(rgba(255, 42, 42, 0.1) 50%, transparent 50%);
+            background-size: 40px 40px; border: 1px solid var(--alert-red); margin-bottom: 20px;
+            position: relative; overflow: hidden;
+        }
+        .scanner-line {
+            position: absolute; top: 0; left: 0; width: 5px; height: 100%; background: var(--alert-red);
+            box-shadow: 0 0 20px var(--alert-red); animation: scanMap 2s infinite linear;
+        }
+        @keyframes scanMap { 0% { left: 0; } 100% { left: 100%; } }
+        @keyframes slideInLeft { from { transform: translateX(-50px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes fadeIn { to { opacity: 1; } }
+
+        .btn-hibp {
+            display: block; width: 100%; margin-top: 15px; padding: 10px; background: transparent; 
+            border: 1px solid #fff; color: #fff; text-align: center; text-decoration: none; 
+            font-weight: bold; transition: 0.3s;
+        }
+        .btn-hibp:hover { background: #fff; color: #000; }
+
+        /* --- MOBILE OPTIMIZATION --- */
+        @media (max-width: 768px) {
+            .glitch-header { font-size: 1.8rem; margin-top: 60px !important; letter-spacing: 5px; }
+            .search-container { flex-direction: column; margin: 20px auto; }
+            .search-btn { padding: 15px; margin-top: 5px; }
+            .results-area { grid-template-columns: 1fr; }
+            div[style*="position: absolute; top: 20px; right: 20px;"] { top: 40px !important; right: 10px !important; font-size: 0.8rem; }
+            div[style*="position: absolute; top: 20px; left: 20px;"] { font-size: 0.6rem !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid">
+    <div style="position: absolute; top: 20px; left: 20px; font-size: 0.8rem; color: #555;">
+        /// CONNECTION: <span style="color:var(--alert-red)">TOR_CIRCUIT_ACTIVE</span><br>
+        /// NODE_RELAY: 192.168.X.X
+    </div>
+    <div style="position: absolute; top: 20px; right: 20px;">
+        <a href="/architecture" style="color: #444; text-decoration: none;">[ ABORT SESSION ]</a>
+    </div>
+
+    <h1 class="glitch-header mt-5">DEEP_SCAN // V4</h1>
+
+    <form method="POST" class="search-container" onsubmit="triggerScan()">
+        <input type="text" name="query" class="search-input" placeholder="ENTER IDENTIFIER..." value="{{ query }}" autocomplete="off">
+        <button type="submit" class="search-btn" id="scanBtn">INITIATE</button>
+    </form>
+
+    <div id="scanStatus" class="text-center mt-3 mb-5" style="display:none; color: var(--alert-red); letter-spacing: 2px;">
+        > PINGING ONION NODES... <span id="progress">0%</span>
+    </div>
+
+    {% if logs %}
+    <div class="results-area" id="mainDisplay">
+        
+        <div class="target-card">
+            <div class="map-overlay">
+                <div class="scanner-line"></div>
+                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border: 2px solid var(--alert-red); border-radius: 50%; width: 20px; height: 20px;"></div>
+            </div>
+            <h5 style="color: #fff; border-bottom: 1px solid var(--alert-red); padding-bottom: 10px;">TARGET ANALYSIS</h5>
+            <div class="mt-3">
+                <span style="color: #666;">QUERY:</span> <span style="color: #fff;">"{{ query }}"</span><br>
+                <span style="color: #666;">RISK LEVEL:</span> 
+                {% if breaches %}
+                    <span style="color: var(--alert-red); font-weight: bold;">CRITICAL</span>
+                {% else %}
+                    <span style="color: #0f0; font-weight: bold;">LOW</span>
+                {% endif %}<br>
+                <span style="color: #666;">AI CONFIDENCE:</span> 98.4%
+                
+                <a href="https://haveibeenpwned.com/account/{{ query }}" target="_blank" class="btn-hibp">
+                    VERIFY ON HIBP &nearr;
+                </a>
+            </div>
+        </div>
+
+        <div class="data-feed">
+            <h6 style="color: var(--alert-red); margin-bottom: 15px;">> INTERCEPTED_PACKETS</h6>
+            
+            {% for log in logs %}
+            <div style="color: #444; font-size: 0.75rem; margin-bottom: 2px;">{{ log }}</div>
+            {% endfor %}
+            <hr style="border-color: #333;">
+            
+            {% if breaches %}
+                <div style="color: #ccc; margin-bottom: 15px; font-style: italic;">
+                    "{{ breaches|length }} Data Breaches identified in Threat Database."
+                </div>
+
+                {% for item in breaches %}
+                <div class="leak-item" style="animation-delay: {{ loop.index0 * 0.1 }}s;">
+                    <div>
+                        <strong style="color: #fff;">{{ item.Name }}</strong><br>
+                        <span style="color: var(--alert-red); font-size: 0.75rem;">
+                            {{ item.Description }}
+                        </span>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 0.7rem; color: #555;">UNKNOWN DATE</div>
+                        {% for tag in item.DataClasses %}
+                            <span style="font-size: 0.6rem; background: #222; padding: 2px 4px; color: #888;">{{ tag }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="text-center mt-5" style="color: #444;">NO ACTIVE LEAKS FOUND IN PUBLIC INDEX.</div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+
+<script>
+    function triggerScan() {
+        document.getElementById('scanBtn').innerHTML = "SCANNING...";
+        document.getElementById('scanStatus').style.display = "block";
+        
+        let pct = 0;
+        let interval = setInterval(() => {
+            pct += Math.floor(Math.random() * 5);
+            if(pct > 100) pct = 99;
+            document.getElementById('progress').innerText = pct + "%";
+        }, 100);
+    }
+</script>
+
+</body>
+</html>

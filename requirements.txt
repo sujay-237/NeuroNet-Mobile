@@ -1,0 +1,8 @@
+Flask==3.0.0
+google-genai
+supabase
+requests
+psutil
+Pillow
+gunicorn
+pymongo==4.6.1

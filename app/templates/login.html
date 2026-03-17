@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NEURO-NET | SECURE ACCESS</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Rajdhani:wght@500;700&family=Tiro+Devanagari+Sanskrit&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-dark: #020204;
+            --neon-blue: #00f3ff;
+            --neon-pink: #ff0055;
+            --glass-panel: rgba(10, 20, 30, 0.85);
+            --grid-color: rgba(0, 243, 255, 0.15);
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: #fff;
+            font-family: 'Rajdhani', sans-serif;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .cyber-grid {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: 
+                linear-gradient(transparent 0%, var(--bg-dark) 100%),
+                repeating-linear-gradient(0deg, transparent 0, transparent 40px, var(--grid-color) 40px, var(--grid-color) 41px),
+                repeating-linear-gradient(90deg, transparent 0, transparent 40px, var(--grid-color) 40px, var(--grid-color) 41px);
+            transform: perspective(500px) rotateX(45deg) scale(2);
+            animation: gridMove 20s linear infinite;
+            z-index: -4;
+        }
+        @keyframes gridMove { 0% { background-position: 0 0; } 100% { background-position: 0 1000px; } }
+
+        .particles {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -3; pointer-events: none;
+        }
+        .particle {
+            position: absolute;
+            background: var(--neon-blue);
+            width: 2px; height: 2px;
+            border-radius: 50%;
+            box-shadow: 0 0 5px var(--neon-blue);
+            animation: floatUp linear infinite;
+        }
+        @keyframes floatUp {
+            0% { transform: translateY(100vh); opacity: 0; }
+            50% { opacity: 0.8; }
+            100% { transform: translateY(-10vh); opacity: 0; }
+        }
+
+        .hud-ring {
+            position: fixed; top: 50%; left: 50%; 
+            width: 700px; height: 700px;
+            border: 1px dashed rgba(0, 243, 255, 0.15);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: -2;
+            animation: rotateRing 40s linear infinite;
+            pointer-events: none;
+        }
+        .hud-ring::before {
+            content: ''; position: absolute; top: -5px; left: 50%; width: 10px; height: 10px;
+            background: var(--neon-blue); border-radius: 50%; box-shadow: 0 0 15px var(--neon-blue);
+        }
+        @keyframes rotateRing { from { transform: translate(-50%, -50%) rotate(0deg); } to { transform: translate(-50%, -50%) rotate(360deg); } }
+
+        .scanlines {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 4px, 6px 100%;
+            z-index: 999; pointer-events: none; opacity: 0.3;
+            animation: scanScroll 10s linear infinite;
+        }
+        @keyframes scanScroll { 0% { background-position: 0 0; } 100% { background-position: 0 100%; } }
+
+        .login-card {
+            background: var(--glass-panel);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 243, 255, 0.3);
+            border-top: 4px solid var(--neon-blue);
+            box-shadow: 0 0 60px rgba(0, 243, 255, 0.1);
+            padding: 40px;
+            width: 380px;
+            max-height: 90vh; /* Prevents overflow off-screen */
+            overflow-y: auto;
+            position: relative;
+            text-align: center;
+            animation: slideUp 0.8s ease-out, floatCard 6s ease-in-out infinite 0.8s;
+            z-index: 10;
+        }
+        
+        /* Hide scrollbar for Chrome, Safari and Opera */
+        .login-card::-webkit-scrollbar { display: none; }
+        /* Hide scrollbar for IE, Edge and Firefox */
+        .login-card { -ms-overflow-style: none; scrollbar-width: none; }
+
+        @keyframes slideUp { from { opacity: 0; transform: translateY(50px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes floatCard { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+
+        .cyber-logo {
+            width: 100px; height: 100px; border-radius: 50%;
+            border: 3px solid var(--neon-blue);
+            box-shadow: 0 0 30px rgba(0, 243, 255, 0.4);
+            margin-bottom: 15px; object-fit: cover;
+            animation: cyberSpin 1.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards, pulseGlow 3s infinite 1.5s;
+            opacity: 0; position: relative; z-index: 5;
+        }
+        @keyframes cyberSpin { 0% { opacity: 0; transform: scale(0) rotate(-180deg); } 100% { opacity: 1; transform: scale(1) rotate(0deg); } }
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 20px rgba(0, 243, 255, 0.4); border-color: var(--neon-blue); }
+            50% { box-shadow: 0 0 50px rgba(0, 243, 255, 0.8); border-color: #fff; }
+        }
+
+        .sanskrit-text {
+            font-family: 'Tiro Devanagari Sanskrit', serif;
+            color: var(--neon-blue);
+            font-size: 1.2rem;
+            margin-bottom: 5px;
+            letter-spacing: 1px;
+            font-weight: bold;
+            text-shadow: 0 0 10px var(--neon-blue);
+            animation: textPulse 2s ease-in-out infinite alternate;
+            position: relative; z-index: 5;
+        }
+        @keyframes textPulse {
+            0% { opacity: 0.7; text-shadow: 0 0 5px var(--neon-blue); }
+            100% { opacity: 1; text-shadow: 0 0 20px var(--neon-blue), 0 0 2px #fff; }
+        }
+
+        h2 { font-family: 'Orbitron'; letter-spacing: 3px; color: #fff; margin: 5px 0 0; text-shadow: 0 0 10px var(--neon-blue); position: relative; z-index: 5; }
+
+        .subtitle { 
+            color: #888; font-size: 0.75rem; letter-spacing: 2px; margin-bottom: 20px; 
+            position: relative; display: inline-block; z-index: 5;
+            animation: autoGlitch 5s infinite;
+        }
+        @keyframes autoGlitch {
+            0%, 90% { transform: translate(0); color: #888; }
+            92% { transform: translate(-2px, 2px); color: var(--neon-pink); }
+            94% { transform: translate(2px, -2px); }
+            96% { transform: translate(-2px, -2px); }
+            98% { transform: translate(2px, 2px); }
+            100% { transform: translate(0); color: #888; }
+        }
+
+        /* TABS CSS */
+        .tabs { display: flex; margin-bottom: 20px; border-bottom: 1px solid #333; position: relative; z-index: 5;}
+        .tab { flex: 1; padding: 10px; cursor: pointer; color: #666; font-size: 0.85rem; font-weight: bold; transition: 0.3s; letter-spacing: 1px; }
+        .tab.active { color: var(--neon-blue); border-bottom: 2px solid var(--neon-blue); text-shadow: 0 0 10px rgba(0,243,255,0.5); }
+        .tab:hover { color: #fff; }
+        .form-section { display: none; position: relative; z-index: 5; }
+        .form-section.active { display: block; animation: fadeIn 0.4s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .input-group { margin-bottom: 15px; text-align: left; }
+        label { color: var(--neon-blue); font-size: 0.7rem; letter-spacing: 1px; display: block; margin-bottom: 5px; font-weight: bold; }
+        
+        input {
+            width: 100%; padding: 10px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid #333; color: white;
+            font-family: 'JetBrains Mono';
+            box-sizing: border-box; transition: 0.3s;
+            border-radius: 4px;
+        }
+        input:focus { 
+            outline: none; 
+            border-color: var(--neon-blue); 
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.3), inset 0 0 10px rgba(0, 243, 255, 0.1); 
+            background: rgba(0, 0, 0, 0.8);
+        }
+
+        button {
+            width: 100%; padding: 12px;
+            background: transparent;
+            color: var(--neon-blue);
+            border: 2px solid var(--neon-blue);
+            font-weight: bold; font-family: 'Rajdhani'; letter-spacing: 2px;
+            cursor: pointer; transition: 0.3s;
+            margin-top: 10px; font-size: 1.1rem;
+            text-transform: uppercase;
+            position: relative; overflow: hidden;
+            z-index: 20; 
+        }
+        
+        button::before {
+            content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+            background: var(--neon-blue); transition: 0.3s; z-index: -1;
+        }
+        button:hover::before { left: 0; }
+        button:hover { color: #000; box-shadow: 0 0 35px var(--neon-blue); }
+
+        /* --- MOBILE OPTIMIZATION --- */
+        @media (max-width: 480px) {
+            .login-card {
+                width: 90%; 
+                max-width: 380px;
+                padding: 25px 15px;
+            }
+            .hud-ring {
+                width: 100vw; 
+                height: 100vw;
+                max-width: 400px;
+                max-height: 400px;
+                opacity: 0.3; 
+            }
+            .sanskrit-text { font-size: 1rem; }
+            h2 { font-size: 1.2rem; }
+            .tab { padding: 10px 5px; font-size: 0.75rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="cyber-grid"></div>
+<div class="particles" id="particles"></div>
+<div class="hud-ring"></div>
+<div class="scanlines"></div>
+
+<div class="login-card">
+    <img src="{{ url_for('static', filename='logo.jpg') }}" class="cyber-logo" alt="Logo">
+    <div class="sanskrit-text">शत्रोः पदचिह्नं अन्वेषयामः</div>
+    
+    <h2 id="typing-title"></h2>
+    <div class="subtitle">SECURE TERMINAL UPLINK</div>
+
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab('userLogin')">USER AUTH</div>
+        <div class="tab" onclick="switchTab('register')">CREATE IDENT</div>
+        <div class="tab" onclick="switchTab('adminLogin')" style="color:var(--neon-pink);">ROOT</div>
+    </div>
+
+    <div id="userLogin" class="form-section active">
+        <div class="input-group">
+            <label>EMAIL IDENTITY</label>
+            <input type="text" id="u_email" placeholder="agent@neuro.net">
+        </div>
+        <div class="input-group">
+            <label>AUTH KEY</label>
+            <input type="password" id="u_password" placeholder="••••••••">
+        </div>
+        <button onclick="submitLogin('user')">INITIATE LINK</button>
+    </div>
+
+    <div id="register" class="form-section">
+        <div class="input-group">
+            <label>LEGAL NAME</label>
+            <input type="text" id="r_name" placeholder="John Doe">
+        </div>
+        <div class="input-group">
+            <label>EMAIL IDENTITY</label>
+            <input type="text" id="r_email" placeholder="agent@neuro.net">
+        </div>
+        <div class="input-group">
+            <label>SECURE COMMS (PHONE)</label>
+            <input type="text" id="r_phone" placeholder="+1 555-0199">
+        </div>
+        <div class="input-group">
+            <label>AUTH KEY (PASSWORD)</label>
+            <input type="password" id="r_pass" placeholder="••••••••">
+        </div>
+        <div class="input-group">
+            <label>VERIFY AUTH KEY</label>
+            <input type="password" id="r_conf" placeholder="••••••••">
+        </div>
+        <button onclick="submitRegister()">SUBMIT REQUEST</button>
+    </div>
+
+    <div id="adminLogin" class="form-section">
+        <div class="input-group">
+            <label style="color:var(--neon-pink);">ADMIN ID</label>
+            <input type="text" id="a_user" placeholder="Enter Root ID">
+        </div>
+        <div class="input-group">
+            <label style="color:var(--neon-pink);">ROOT PASSWORD</label>
+            <input type="password" id="a_password" placeholder="••••••••">
+        </div>
+        <button onclick="submitLogin('admin')" style="border-color: var(--neon-pink); color: var(--neon-pink);">
+            ACCESS CORE
+        </button>
+    </div>
+
+</div>
+
+<script>
+    // TYPING TITLE
+    const text = "NEURO-NET PORTAL"; let index = 0;
+    setTimeout(() => typeWriter(), 1000);
+    function typeWriter() {
+        if (index < text.length) {
+            document.getElementById("typing-title").innerHTML += text.charAt(index);
+            index++; setTimeout(typeWriter, 100);
+        }
+    }
+
+    // PARTICLE GENERATOR
+    const particleContainer = document.getElementById('particles');
+    for (let i = 0; i < 40; i++) {
+        let p = document.createElement('div');
+        p.className = 'particle';
+        p.style.left = Math.random() * 100 + 'vw';
+        p.style.animationDuration = (Math.random() * 5 + 5) + 's'; 
+        p.style.animationDelay = (Math.random() * 5) + 's';
+        p.style.opacity = Math.random();
+        particleContainer.appendChild(p);
+    }
+
+    // TAB LOGIC
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.form-section').forEach(f => f.classList.remove('active'));
+        event.target.classList.add('active');
+        document.getElementById(tabId).classList.add('active');
+        
+        if (tabId === 'adminLogin') event.target.style.borderBottomColor = 'var(--neon-pink)';
+    }
+
+    // ATTACK BEHAVIOR TRACKING (KEYSTROKES)
+    let keystrokes = [];
+    document.addEventListener('keydown', (e) => keystrokes.push({ 'key': e.key, 'time': Date.now() }));
+
+   // LOGIN API CALL
+    function submitLogin(type) {
+        let payload = type === 'admin' ? document.getElementById('a_user').value : document.getElementById('u_email').value;
+        let password = type === 'admin' ? document.getElementById('a_password').value : document.getElementById('u_password').value;
+
+        if (!payload || !password) {
+            alert("Both ID/Email and Password are required!");
+            return;
+        }
+
+        fetch('/login', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ type: type, payload: payload, password: password, behavior: { keys: keystrokes } })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === "success") {
+                window.location.href = data.redirect;
+            } else {
+                let box = document.querySelector('.login-card');
+                box.style.animation = "shake 0.4s";
+                setTimeout(() => { 
+                    box.style.animation = "none"; 
+                    alert(data.message);
+                }, 400);
+            }
+        });
+    }
+
+    // REGISTER API CALL
+    function submitRegister() {
+        let name = document.getElementById('r_name').value;
+        let email = document.getElementById('r_email').value;
+        let phone = document.getElementById('r_phone').value;
+        let pass = document.getElementById('r_pass').value;
+        let conf = document.getElementById('r_conf').value;
+
+        if(!name || !email || !phone || !pass) return alert("All fields are required!");
+        
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            alert("Invalid email format!");
+            return;
+        }
+
+        if(pass !== conf) return alert("Passwords do not match!");
+
+        fetch('/register', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ name: name, email: email, phone: phone, password: pass })
+        })
+        .then(res => res.json())
+        .then(data => {
+            alert(data.message);
+            if(data.status === "success") {
+                switchTab('userLogin');
+            }
+        });
+    }
+
+    const styleSheet = document.createElement("style");
+    styleSheet.innerText = `@keyframes shake { 0%, 100% {transform: translateX(0);} 20%, 60% {transform: translateX(-10px);} 40%, 80% {transform: translateX(10px);} }`;
+    document.head.appendChild(styleSheet);
+</script>
+
+</body>
+</html>

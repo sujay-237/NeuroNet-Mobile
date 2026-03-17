@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NEURO-NET | ADVANCED NLP PROFILER</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root { 
+            --bg-deep: #030008;
+            --toxic-cyan: #00E5FF;
+            --cyber-violet: #D500F9;
+            --neon-yellow: #FFEA00;
+            --glass-panel: rgba(15, 5, 25, 0.65);
+        }
+        
+        body { 
+            background: var(--bg-deep); color: #fff; font-family: 'Fira Code', monospace; 
+            margin: 0; padding: 40px 20px; overflow-x: hidden;
+        }
+
+        /* 1. Liquid Aurora Background */
+        .aurora-bg {
+            position: fixed; top: -50%; left: -50%; width: 200vw; height: 200vh;
+            background: radial-gradient(circle at 50% 50%, rgba(213, 0, 249, 0.15), transparent 60%),
+                        radial-gradient(circle at 80% 20%, rgba(0, 229, 255, 0.1), transparent 50%);
+            z-index: -2; animation: auroraSpin 30s linear infinite; pointer-events: none;
+        }
+        .hex-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1;
+            background-image: radial-gradient(rgba(0, 229, 255, 0.1) 1px, transparent 1px);
+            background-size: 30px 30px; pointer-events: none;
+        }
+        @keyframes auroraSpin { 100% { transform: rotate(360deg); } }
+
+        .container { max-width: 1200px; margin: auto; position: relative; z-index: 10; animation: floatUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1); }
+        @keyframes floatUp { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
+
+        .header-title { font-family: 'Orbitron', sans-serif; font-size: 3rem; color: #fff; font-weight: 900; text-align: center; margin-bottom: 5px; text-shadow: 0 0 20px var(--cyber-violet); letter-spacing: 2px;}
+        .subtitle { text-align: center; color: var(--toxic-cyan); font-size: 1rem; margin-bottom: 40px; letter-spacing: 3px; text-transform: uppercase; }
+
+        /* 2. Tracing Neon Border Input */
+        .input-glow-wrapper {
+            position: relative; padding: 3px; border-radius: 8px; margin-bottom: 30px;
+            background: linear-gradient(90deg, var(--toxic-cyan), var(--cyber-violet), var(--neon-yellow), var(--toxic-cyan));
+            background-size: 300% 300%; animation: gradientFlow 4s linear infinite;
+        }
+        @keyframes gradientFlow { 0% { background-position: 0% 50%; } 100% { background-position: 300% 50%; } }
+        
+        textarea { 
+            width: 100%; height: 160px; background: #0a0510; border: none; border-radius: 5px;
+            color: #fff; padding: 20px; font-family: 'Fira Code'; font-size: 1.1rem; 
+            outline: none; box-sizing: border-box; resize: vertical; line-height: 1.5;
+        }
+        textarea::placeholder { color: #555; }
+
+        /* Advanced Buttons */
+        .btn-panel { display: flex; justify-content: center; gap: 25px; margin-bottom: 50px; }
+        button, .btn-link { 
+            background: transparent; border: 2px solid var(--toxic-cyan); color: var(--toxic-cyan); 
+            padding: 15px 40px; font-family: 'Orbitron'; font-weight: bold; font-size: 1.1rem; 
+            text-transform: uppercase; cursor: pointer; transition: 0.3s; position: relative;
+            text-decoration: none; overflow: hidden; border-radius: 4px; box-shadow: 0 0 10px rgba(0, 229, 255, 0.2);
+        }
+        button:hover, .btn-link:hover { 
+            background: var(--toxic-cyan); color: #000; box-shadow: 0 0 30px var(--toxic-cyan); transform: scale(1.05);
+        }
+        .btn-link { border-color: var(--cyber-violet); color: var(--cyber-violet); box-shadow: 0 0 10px rgba(213, 0, 249, 0.2);}
+        .btn-link:hover { background: var(--cyber-violet); color: #fff; box-shadow: 0 0 30px var(--cyber-violet); }
+
+        /* Results Cards */
+        .results-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 30px; }
+        .hud-card {
+            background: var(--glass-panel); padding: 35px; border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px);
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5), 0 15px 35px rgba(0,0,0,0.6);
+            position: relative; overflow: hidden;
+        }
+        /* Top accent line */
+        .hud-card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; }
+        .card-danger::before { background: var(--neon-yellow); box-shadow: 0 0 15px var(--neon-yellow); }
+        .card-analyze::before { background: var(--toxic-cyan); box-shadow: 0 0 15px var(--toxic-cyan); }
+
+        h4 { font-family: 'Orbitron'; color: #fff; margin-top: 0; font-size: 1.4rem; letter-spacing: 2px; margin-bottom: 25px;}
+
+        /* 3. SVG Radial Gauges */
+        .gauge-container { display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
+        .svg-gauge { width: 160px; height: 160px; transform: rotate(-90deg); }
+        .gauge-bg { fill: none; stroke: rgba(255,255,255,0.05); stroke-width: 8; }
+        .gauge-fill { fill: none; stroke-linecap: round; stroke-width: 8; stroke-dasharray: 440; stroke-dashoffset: 440; transition: stroke-dashoffset 2s cubic-bezier(0.2, 0.8, 0.2, 1); }
+        
+        .score-text { position: absolute; font-family: 'Orbitron'; font-size: 3rem; font-weight: 900; color: #fff; }
+        .score-label { text-align: center; color: #aaa; margin-top: 15px; font-size: 0.9rem; letter-spacing: 2px; }
+
+        .scramble-text { font-size: 1.3rem; color: var(--toxic-cyan); text-transform: uppercase; margin-bottom: 20px;}
+        .label { color: #666; font-size: 0.8rem; margin-bottom: 5px; display: block; letter-spacing: 1px; }
+
+        .tactic-badge {
+            display: inline-block; padding: 8px 15px; margin: 0 10px 10px 0; border-radius: 20px;
+            background: rgba(213, 0, 249, 0.1); border: 1px solid var(--cyber-violet);
+            color: #fff; font-size: 0.85rem; box-shadow: 0 0 15px rgba(213, 0, 249, 0.3);
+        }
+
+        /* Mini Gauges for Personality */
+        .mini-gauges { display: flex; justify-content: space-between; margin-top: 30px; }
+        .mini-gauge-box { text-align: center; width: 30%; }
+        .mini-svg { width: 80px; height: 80px; transform: rotate(-90deg); margin: 0 auto 10px; display: block;}
+        .mini-bg { fill: none; stroke: rgba(255,255,255,0.05); stroke-width: 6; }
+        .mini-fill { fill: none; stroke: var(--toxic-cyan); stroke-linecap: round; stroke-width: 6; stroke-dasharray: 220; stroke-dashoffset: 220; transition: stroke-dashoffset 2s ease; }
+        .mini-val { position: absolute; top: 30px; left: 0; width: 100%; font-size: 1.1rem; font-weight: bold; }
+        .mini-title { font-size: 0.75rem; color: #aaa; letter-spacing: 1px; }
+
+        /* --- MOBILE OPTIMIZATION --- */
+        @media (max-width: 768px) {
+            .header-title { font-size: 1.8rem; }
+            .btn-panel { flex-direction: column; gap: 15px; }
+            button, .btn-link { width: 100%; text-align: center; padding: 12px; }
+            .results-grid { grid-template-columns: 1fr; }
+            .hud-card { padding: 20px; }
+            .mini-gauges { flex-wrap: wrap; justify-content: center; gap: 15px; }
+            .mini-gauge-box { width: 45%; } /* Two per row on mobile */
+            .svg-gauge { width: 120px; height: 120px; }
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="aurora-bg"></div>
+<div class="hex-overlay"></div>
+
+<div class="container">
+    <div class="header-title">PSYCH-OP PROFILER</div>
+    <div class="subtitle">Neural Linguistic & Sentiment Engine</div>
+    
+    <form method="POST">
+        <div class="input-glow-wrapper">
+            <textarea name="bio_text" placeholder="> Awaiting raw target data for sentiment and manipulation analysis..." required>{{ text_input }}</textarea>
+        </div>
+        
+        <div class="btn-panel">
+            <button type="submit" onclick="this.innerHTML='PROCESSING...';">INITIALIZE SCAN</button>
+            <a href="/architecture" class="btn-link">ABORT SYSTEM</a>
+        </div>
+    </form>
+
+    {% if profile %}
+    <div class="results-grid">
+        
+        <div class="hud-card card-danger">
+            <h4>THREAT METRICS</h4>
+            
+            <div class="gauge-container" style="margin-bottom: 40px;">
+                <svg class="svg-gauge" viewBox="0 0 160 160">
+                    <circle class="gauge-bg" cx="80" cy="80" r="70"></circle>
+                    <circle class="gauge-fill" cx="80" cy="80" r="70" style="stroke: var(--neon-yellow);" data-score="{{ profile.threat_score }}"></circle>
+                </svg>
+                <div class="score-text"><span id="threatCounter">0</span></div>
+            </div>
+            
+            <span class="label">DETECTED SENTIMENT</span>
+            <div class="scramble-text" data-final="{{ profile.sentiment }}">01010101</div>
+
+            <span class="label">LIKELY ATTACK VECTOR</span>
+            <div class="scramble-text" data-final="{{ profile.vector }}" style="color: var(--cyber-violet);">01010101</div>
+        </div>
+
+        <div class="hud-card card-analyze">
+            <h4>MANIPULATION VECTORS</h4>
+            
+            <div style="margin-bottom: 30px; min-height: 80px;">
+                <span class="label" style="margin-bottom: 15px;">IDENTIFIED TACTICS</span>
+                {% for tactic in profile.tactics %}
+                    <span class="tactic-badge">{{ tactic|upper }}</span>
+                {% endfor %}
+            </div>
+
+            <h4 style="margin-top: 20px; font-size: 1.1rem; color: #888;">TARGET EXPLOITABILITY (BIG-5)</h4>
+            
+            <div class="mini-gauges">
+                <div class="mini-gauge-box" style="position:relative;">
+                    <svg class="mini-svg" viewBox="0 0 80 80">
+                        <circle class="mini-bg" cx="40" cy="40" r="35"></circle>
+                        <circle class="mini-fill" cx="40" cy="40" r="35" data-val="{{ profile.personality.neuroticism }}"></circle>
+                    </svg>
+                    <div class="mini-val">{{ profile.personality.neuroticism }}</div>
+                    <div class="mini-title">NEUROTICISM<br><span style="color:#555">(Fear/Stress)</span></div>
+                </div>
+
+                <div class="mini-gauge-box" style="position:relative;">
+                    <svg class="mini-svg" viewBox="0 0 80 80">
+                        <circle class="mini-bg" cx="40" cy="40" r="35"></circle>
+                        <circle class="mini-fill" cx="40" cy="40" r="35" data-val="{{ profile.personality.openness }}" style="stroke: var(--cyber-violet);"></circle>
+                    </svg>
+                    <div class="mini-val">{{ profile.personality.openness }}</div>
+                    <div class="mini-title">OPENNESS<br><span style="color:#555">(Curiosity)</span></div>
+                </div>
+                
+                <div class="mini-gauge-box" style="position:relative;">
+                    <svg class="mini-svg" viewBox="0 0 80 80">
+                        <circle class="mini-bg" cx="40" cy="40" r="35"></circle>
+                        <circle class="mini-fill" cx="40" cy="40" r="35" data-val="{{ profile.personality.agreeableness }}" style="stroke: var(--neon-yellow);"></circle>
+                    </svg>
+                    <div class="mini-val">{{ profile.personality.agreeableness }}</div>
+                    <div class="mini-title">AGREEABLE<br><span style="color:#555">(Trusting)</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        
+        // 1. Animate the Main Threat Gauge (Radius 70 = Circumference ~440)
+        const mainGauge = document.querySelector('.gauge-fill');
+        const scoreCounter = document.getElementById('threatCounter');
+        
+        if (mainGauge && scoreCounter) {
+            const score = parseInt(mainGauge.getAttribute('data-score'));
+            // Calculate stroke-dashoffset: 440 - (440 * score / 100)
+            const offset = 440 - (440 * score / 100);
+            
+            setTimeout(() => {
+                mainGauge.style.strokeDashoffset = offset;
+            }, 300);
+
+            // Counter Animation
+            let current = 0;
+            const timer = setInterval(() => {
+                current += 2;
+                if (current >= score) {
+                    current = score;
+                    clearInterval(timer);
+                }
+                scoreCounter.innerText = current;
+            }, 30);
+        }
+
+        // 2. Animate Mini Gauges (Radius 35 = Circumference ~220)
+        const miniFills = document.querySelectorAll('.mini-fill');
+        setTimeout(() => {
+            miniFills.forEach(fill => {
+                const val = parseInt(fill.getAttribute('data-val'));
+                fill.style.strokeDashoffset = 220 - (220 * val / 100);
+            });
+        }, 500);
+
+        // 3. Cryptographic Text Scramble Effect
+        const scrambleElements = document.querySelectorAll('.scramble-text');
+        const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*";
+        
+        scrambleElements.forEach(el => {
+            const finalString = el.getAttribute('data-final').toUpperCase();
+            let iterations = 0;
+            
+            const scrambleInterval = setInterval(() => {
+                el.innerText = finalString.split("").map((letter, index) => {
+                    if (index < iterations) return finalString[index];
+                    return chars[Math.floor(Math.random() * chars.length)];
+                }).join("");
+                
+                if (iterations >= finalString.length) clearInterval(scrambleInterval);
+                iterations += 1/3; // Controls speed of reveal
+            }, 30);
+        });
+    });
+</script>
+
+</body>
+</html>

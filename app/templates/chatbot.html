@@ -112,7 +112,7 @@
             {% endif %}
         </div>
 
-        <form method="POST" class="input-deck">
+        <form method="POST" class="input-deck" id="chatForm">
             <input type="text" name="message" class="cyber-input" placeholder="Execute command or query..." autocomplete="off" autofocus required>
             <button type="submit" class="btn-send">TX</button>
         </form>
@@ -135,6 +135,46 @@
         logs.prepend(line); if(logs.children.length > 20) logs.lastChild.remove();
     }
     setInterval(addLog, 200);
+
+    // Chatbot Loading Animation & Progress Bar
+    document.getElementById('chatForm').addEventListener('submit', function() {
+        const btn = this.querySelector('.btn-send');
+        btn.innerHTML = 'TX...'; 
+        btn.style.pointerEvents = 'none';
+        btn.style.opacity = '0.5';
+        
+        // Add pulsing CSS
+        if(!document.getElementById('pulseStyle')) {
+            let pulseStyle = document.createElement("style");
+            pulseStyle.id = "pulseStyle";
+            pulseStyle.innerText = `@keyframes txPulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }`;
+            document.head.appendChild(pulseStyle);
+        }
+        btn.style.animation = "txPulse 1s infinite";
+
+        // Inject progress bar below the form
+        if(!document.getElementById('chat-prog-container')) {
+            let progressHtml = `
+                <div id="chat-prog-container" style="width:100%; height:3px; background:rgba(255,255,255,0.1); margin-top:10px; overflow:hidden;">
+                    <div id="chat-prog-bar" style="height:100%; width:0%; background:var(--neon-purple); box-shadow: 0 0 10px var(--neon-purple); transition:width 0.2s;"></div>
+                </div>
+                <div id="chat-prog-text" style="color:var(--neon-purple); font-size:0.75rem; text-align:right; margin-top:4px; font-family:'JetBrains Mono';">0%</div>
+            `;
+            this.insertAdjacentHTML('afterend', progressHtml);
+        }
+
+        let pBar = document.getElementById('chat-prog-bar');
+        let pText = document.getElementById('chat-prog-text');
+        let pVal = 0;
+        
+        // Simulates transmission progress
+        setInterval(() => {
+            pVal += Math.random() * 25 * (1 - pVal / 100);
+            if (pVal > 99) pVal = 99;
+            pBar.style.width = pVal + '%';
+            pText.innerText = `TRANSMITTING... ${Math.floor(pVal)}%`;
+        }, 250);
+    });
 </script>
 
 </body>

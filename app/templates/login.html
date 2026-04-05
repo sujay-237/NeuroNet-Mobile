@@ -328,7 +328,7 @@
     let keystrokes = [];
     document.addEventListener('keydown', (e) => keystrokes.push({ 'key': e.key, 'time': Date.now() }));
 
-   // LOGIN API CALL
+    // LOGIN API CALL WITH LOADING PROGRESS
     function submitLogin(type) {
         let payload = type === 'admin' ? document.getElementById('a_user').value : document.getElementById('u_email').value;
         let password = type === 'admin' ? document.getElementById('a_password').value : document.getElementById('u_password').value;
@@ -338,6 +338,43 @@
             return;
         }
 
+        // --- BUTTON & LOADING UI LOGIC ---
+        let btn = type === 'admin' ? document.querySelector('#adminLogin button') : document.querySelector('#userLogin button');
+        let originalText = btn.innerHTML;
+        btn.innerHTML = 'AUTHENTICATING...';
+        btn.style.pointerEvents = 'none';
+        btn.style.opacity = '0.5';
+
+        // Set theme colors
+        let barColor = type === 'admin' ? 'var(--neon-pink)' : 'var(--neon-blue)';
+
+        // Inject Progress Bar if it doesn't exist
+        let existingContainer = document.getElementById('login-prog-container');
+        if (existingContainer) {
+            existingContainer.remove();
+            document.getElementById('login-prog-text').remove();
+        }
+
+        let progressHtml = `
+            <div id="login-prog-container" style="width:100%; height:4px; background:rgba(255,255,255,0.1); margin-top:15px; border-radius:2px; overflow:hidden;">
+                <div id="login-prog-bar" style="height:100%; width:0%; background:${barColor}; transition:width 0.2s, box-shadow 0.2s; box-shadow: 0 0 10px ${barColor};"></div>
+            </div>
+            <div id="login-prog-text" style="color:${barColor}; font-size:0.8rem; text-align:right; margin-top:5px; font-family:'JetBrains Mono'; font-weight:bold;">0%</div>
+        `;
+        btn.insertAdjacentHTML('afterend', progressHtml);
+
+        let pBar = document.getElementById('login-prog-bar');
+        let pText = document.getElementById('login-prog-text');
+        let pVal = 0;
+        
+        // Simulate progress climbing to 95%
+        let pInterval = setInterval(() => {
+            pVal += Math.random() * 15 * (1 - pVal / 100);
+            if (pVal > 95) pVal = 95;
+            pBar.style.width = pVal + '%';
+            pText.innerText = Math.floor(pVal) + '%';
+        }, 200);
+
         fetch('/login', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -346,15 +383,31 @@
         .then(res => res.json())
         .then(data => {
             if (data.status === "success") {
-                window.location.href = data.redirect;
+                clearInterval(pInterval);
+                pBar.style.width = '100%';
+                pText.innerText = '100% - LINK ESTABLISHED';
+                setTimeout(() => window.location.href = data.redirect, 400);
             } else {
+                // Revert on error
+                clearInterval(pInterval);
+                document.getElementById('login-prog-container').remove();
+                document.getElementById('login-prog-text').remove();
+                
+                btn.innerHTML = originalText;
+                btn.style.pointerEvents = 'auto';
+                btn.style.opacity = '1';
+
                 let box = document.querySelector('.login-card');
                 box.style.animation = "shake 0.4s";
-                setTimeout(() => { 
-                    box.style.animation = "none"; 
-                    alert(data.message);
-                }, 400);
+                setTimeout(() => { box.style.animation = "none"; alert(data.message); }, 400);
             }
+        })
+        .catch(err => {
+            clearInterval(pInterval);
+            btn.innerHTML = originalText;
+            btn.style.pointerEvents = 'auto';
+            btn.style.opacity = '1';
+            alert("Connection error. Terminal unreachable.");
         });
     }
 

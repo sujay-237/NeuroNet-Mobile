@@ -183,7 +183,7 @@
 
     <div class="agent-box">
         <h3><i class="fas fa-robot fa-spin-pulse"></i> CYBER INTEL AGENT</h3>
-        <form method="POST" class="input-group">
+        <form method="POST" class="input-group" id="agentForm">
             <input type="text" name="agent_query" placeholder="Ask specific questions about any cyber attack, vulnerability, or news story..." value="{{ last_query }}" required autocomplete="off">
             <button type="submit" class="btn-agent">EXECUTE QUERY</button>
         </form>
@@ -287,6 +287,37 @@
             requestAnimationFrame(animate);
         }
         animate(); window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; });
+
+        // Cyber Agent Loading Animation & Progress Bar
+        document.getElementById('agentForm').addEventListener('submit', function() {
+            const btn = this.querySelector('.btn-agent');
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> PROCESSING...';
+            btn.style.pointerEvents = 'none';
+            btn.style.opacity = '0.7';
+
+            // Inject progress bar below the form
+            if(!document.getElementById('agent-prog-container')) {
+                let progressHtml = `
+                    <div id="agent-prog-container" style="width:100%; height:4px; background:rgba(255,255,255,0.1); margin-top:20px; border-radius:2px; overflow:hidden;">
+                        <div id="agent-prog-bar" style="height:100%; width:0%; background:var(--neon-cyan); box-shadow: 0 0 10px var(--neon-cyan); transition:width 0.2s;"></div>
+                    </div>
+                    <div id="agent-prog-text" style="color:var(--neon-cyan); font-size:0.85rem; text-align:right; margin-top:5px; font-family:'JetBrains Mono';">0%</div>
+                `;
+                this.insertAdjacentHTML('afterend', progressHtml);
+            }
+
+            let pBar = document.getElementById('agent-prog-bar');
+            let pText = document.getElementById('agent-prog-text');
+            let pVal = 0;
+            
+            // Simulates progress up to 98% while waiting for page reload
+            setInterval(() => {
+                pVal += Math.random() * 20 * (1 - pVal / 100);
+                if (pVal > 98) pVal = 98;
+                pBar.style.width = pVal + '%';
+                pText.innerText = `COMPILING INTEL... ${Math.floor(pVal)}%`;
+            }, 300);
+        });
     </script>
 </body>
 </html>

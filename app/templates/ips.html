@@ -97,6 +97,8 @@
                     <p style="color: #888; font-size: 0.8rem;">Simulate incoming packet traffic to test signature detection.</p>
                     
                     <form method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
                         <input type="text" name="packet" placeholder="PAYLOAD STRING..." value="{{ packet }}" autocomplete="off">
                         <button type="submit">INJECT PACKET</button>
                     </form>

@@ -236,6 +236,8 @@
 
     <div class="control-panel">
         <form method="POST" enctype="multipart/form-data" id="mainForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            
             <input type="hidden" name="mode" id="modeInput" value="encode">
             <input type="hidden" name="stego_type" id="stegoTypeInput" value="image">
             

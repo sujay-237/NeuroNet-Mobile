@@ -134,6 +134,8 @@
     <div class="subtitle">Neural Linguistic & Sentiment Engine</div>
     
     <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
         <div class="input-glow-wrapper">
             <textarea name="bio_text" placeholder="> Awaiting raw target data for sentiment and manipulation analysis..." required>{{ text_input }}</textarea>
         </div>

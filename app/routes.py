@@ -9,8 +9,10 @@ import math
 import re
 import hashlib
 import string
+import psutil
 import xml.etree.ElementTree as ET
 from collections import Counter
+from functools import wraps 
 from supabase import create_client, Client 
 from pymongo import MongoClient
 
@@ -60,8 +62,23 @@ ids_engine = IntrusionSystem()
 dpi_engine = PacketInspector()
 code_runner = CodeSandbox()
 
-# --- GLOBAL STATE ---
+# --- GLOBAL STATE FOR REAL-TIME HARDWARE METRICS ---
 SERVER_START_TIME = time.time()
+psutil.cpu_percent(interval=None) # Initialize CPU counter
+LAST_NET_IO = psutil.net_io_counters().bytes_sent + psutil.net_io_counters().bytes_recv
+LAST_NET_TIME = time.time()
+
+# --- SECURITY DECORATORS ---
+def login_required(f):
+    """Decorator to require login for specific routes."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'role' not in session or session.get('role') not in ['user', 'admin']:
+            if request.path.startswith('/api/'):
+                return jsonify({"error": "Unauthorized access."}), 401
+            return redirect('/')
+        return f(*args, **kwargs)
+    return decorated_function
 
 # --- HELPER FUNCTIONS ---
 def log_activity(email, action):
@@ -77,23 +94,46 @@ def log_activity(email, action):
             print(f"[DB ERROR] Failed to log activity to Supabase: {e}")
 
 def get_system_stats():
-    """Calculates real-time server uptime and memory usage."""
+    """Calculates real-time server uptime, memory, CPU, and network usage."""
+    global LAST_NET_IO, LAST_NET_TIME
+    
     uptime_seconds = int(time.time() - SERVER_START_TIME)
     hours, remainder = divmod(uptime_seconds, 3600)
     minutes, seconds = divmod(remainder, 60)
     uptime_str = f"{hours:02}h {minutes:02}m {seconds:02}s"
 
-    memory_str = "N/A"
     try:
-        import psutil
-        process = psutil.Process(os.getpid())
-        mem_bytes = process.memory_info().rss
-        mem_mb = mem_bytes / 1024 / 1024
-        memory_str = f"{mem_mb:.2f} MB"
-    except ImportError:
-        memory_str = "Install 'psutil'"
-    
-    return {"uptime": uptime_str, "memory": memory_str}
+        # Hardware CPU & Memory
+        cpu_percent = psutil.cpu_percent(interval=None)
+        mem = psutil.virtual_memory()
+        mem_percent = mem.percent
+        mem_str = f"{mem.used / 1024 / 1024:.2f} MB"
+        
+        # Real-time Network I/O Load Calculation
+        current_net_io = psutil.net_io_counters().bytes_sent + psutil.net_io_counters().bytes_recv
+        current_time = time.time()
+        
+        net_percent = 0.0
+        time_diff = current_time - LAST_NET_TIME
+        if time_diff > 0:
+            bytes_per_sec = (current_net_io - LAST_NET_IO) / time_diff
+            # Assuming a 100Mbps baseline for visual percentage (12.5 MB/s)
+            net_percent = min(100.0, (bytes_per_sec / 12500000) * 100)
+            
+        LAST_NET_IO = current_net_io
+        LAST_NET_TIME = current_time
+
+    except Exception:
+        cpu_percent, mem_percent, net_percent = 0.0, 0.0, 0.0
+        mem_str = "Error"
+
+    return {
+        "uptime": uptime_str, 
+        "memory": mem_str,
+        "cpu_percent": round(cpu_percent, 1),
+        "mem_percent": round(mem_percent, 1),
+        "net_percent": round(net_percent, 2)
+    }
 
 def quick_sort_attacks(data):
     """Sorts attack history by threat score (Descending)."""
@@ -117,7 +157,6 @@ def parse_ai_json(prompt):
         return json.loads(cleaned)
     except Exception as e: return None
 
-# ADVANCED FEATURE: NLP SOCIAL ENGINEERING ANALYZER
 def analyze_psychology(text):
     """Uses LLM to detect sentiment, tactics, and targeted traits in text."""
     prompt = f"""You are a cybersecurity psychologist. Analyze the following text for social engineering and psychological manipulation tactics.
@@ -134,7 +173,6 @@ def analyze_psychology(text):
     ai_result = parse_ai_json(prompt)
     if ai_result: return ai_result
     
-    # Fallback if AI is offline
     return {
         "threat_score": 50,
         "tactics": ["AI Offline - Keyword Analysis Defaulted", "Urgency"],
@@ -225,27 +263,19 @@ def analyze_password_strength(password):
 
 def ip_to_geo(ip):
     """Fetches actual coordinates for the 3D Globe based on IP using a GeoIP API."""
-    
-    # 1. Handle localhost and private network IPs (they don't have public GPS coordinates)
     if ip in ["127.0.0.1", "localhost", "0.0.0.0"] or ip.startswith("192.168.") or ip.startswith("10."):
-        # Default to a central location for local tests (e.g., India)
         return {"lat": 20.5937, "lng": 78.9629} 
         
-    # 2. Query a free public IP Geolocation API
     try:
-        # We request only the latitude and longitude to keep the response fast
         url = f"http://ip-api.com/json/{ip}?fields=status,lat,lon"
         response = requests.get(url, timeout=3)
-        
         if response.status_code == 200:
             data = response.json()
             if data.get('status') == 'success' and 'lat' in data and 'lon' in data:
                 return {"lat": data['lat'], "lng": data['lon']}
-                
     except Exception as e:
-        print(f"[GEOIP WARNING] Failed to fetch real location for {ip}: {e}")
+        pass
         
-    # 3. Fallback Mechanism (If API is offline or rate-limited, use the old hash method)
     hash_val = int(hashlib.md5(ip.encode()).hexdigest(), 16)
     lat = (hash_val % 180) - 90
     lng = ((hash_val // 180) % 360) - 180
@@ -263,7 +293,9 @@ def logout():
     return redirect('/')
 
 @main_bp.route('/api/stats')
-def api_stats(): return jsonify(get_system_stats())
+@login_required
+def api_stats(): 
+    return jsonify(get_system_stats())
 
 # --- AUTHENTICATION ROUTES (SUPABASE INTEGRATED) ---
 
@@ -273,11 +305,9 @@ def register_user():
     name, email = data.get('name'), data.get('email')
     password, phone = data.get('password'), data.get('phone')
     
-    # 1. Password and all fields mandatory
     if not all([name, email, password, phone]):
         return jsonify({"status": "failed", "message": "All fields, including password, are required"})
     
-    # 3. Verify Email Format
     if not re.match(r"^[^\s@]+@[^\s@]+\.[^\s@]+$", email):
         return jsonify({"status": "failed", "message": "Invalid email format."})
     
@@ -350,19 +380,16 @@ def handle_login():
                 print(f"Login Check Error: {e}")
 
     # --- 3. DETERMINE IF SUSPICIOUS (ATTACK/SQLi) OR JUST INVALID ---
-    # We look for obvious SQLi/XSS patterns to classify as an attack
     sql_patterns = re.compile(r"(--|\bOR\b\s+.+?=|<script>|\bUNION\b|;\s*(DROP|SELECT|UPDATE|INSERT|DELETE)|['\"]\s*=\s*['\"])", re.IGNORECASE)
     
     is_suspicious = False
     if not is_valid_email and login_type == 'user':
-        is_suspicious = True # Invalid email format indicates potential tampering
+        is_suspicious = True
     if sql_patterns.search(payload) or sql_patterns.search(password):
-        is_suspicious = True # Detected injection patterns in email or password
+        is_suspicious = True
 
     if not is_suspicious:
-        # It's just a normal typo or incorrect password/email. Do not log as attack.
         return jsonify({"status": "failed", "message": "Invalid login credentials."})
-
 
     # --- 4. MALICIOUS ATTACK LOGGING & TARPITTING ---
     combined_payload = f"ID: {payload} | Pass: {password}"
@@ -401,18 +428,14 @@ def handle_login():
         try: supabase.table('attack_logs').insert(log_entry).execute()
         except Exception: pass
 
-    # TRAP: Redirect to Ghost Dashboard if high threat score or abnormal typing
     if score >= 50 or wpm > 150: 
         session['role'] = 'ghost'
         session['ghost_ip'] = attacker_ip
-        
         ident = payload if payload else attacker_ip
         log_activity(ident, f"MALICIOUS LOGIN BLOCKED - Routed to Tarpit (Score: {score})")
-        
         return jsonify({"status": "success", "redirect": "/ghost"})
     else:
         return jsonify({"status": "failed", "message": "Invalid login credentials."})
-
 
 # --- GHOST DASHBOARD (TARPIT MODULE) ---
 @main_bp.route('/ghost')
@@ -427,11 +450,8 @@ def ghost_action():
         return jsonify({"error": "unauthorized"}), 403
     
     action = request.json.get('action', 'Unknown')
-    
-    # SERVER-SIDE DELAY (TARPITTING)
     delay_seconds = random.randint(5, 10)
     time.sleep(delay_seconds)
-    
     log_activity(f"GHOST ({session.get('ghost_ip')})", f"Tarpitted exploring {action} for {delay_seconds}s")
     
     if action == "Vault": 
@@ -439,9 +459,7 @@ def ghost_action():
     
     return jsonify({"status": "denied", "message": "Privilege Escalation Required."})
 
-
 # --- ADMIN DASHBOARD ---
-
 @main_bp.route('/dashboard')
 def dashboard():
     if session.get('role') != 'admin':
@@ -465,19 +483,7 @@ def dashboard():
         categories = [attack.get('category', 'Unknown') for attack in history_data]
         if categories: dominant_profile = Counter(categories).most_common(1)[0][0].upper()
         
-    # Generate Arc Data for the DPI Globe Visualizer
-    arc_data = []
-    central_server = {"lat": 20.5937, "lng": 78.9629} # Central server coords (e.g., India)
-    for attack in history_data:
-        origin = ip_to_geo(attack['ip'])
-        color = "#ff0055" if float(attack['score']) > 70 else "#ff9900"
-        arc_data.append({
-            "startLat": origin['lat'], "startLng": origin['lng'],
-            "endLat": central_server['lat'], "endLng": central_server['lng'],
-            "color": color
-        })
-
-    return render_template('dashboard.html', attacks=sorted_history, dominant_profile=dominant_profile, users=users, activities=activities, arcs=json.dumps(arc_data))
+    return render_template('dashboard.html', attacks=sorted_history, dominant_profile=dominant_profile, users=users, activities=activities)
 
 @main_bp.route('/admin/approve/<email>', methods=['POST'])
 def approve_user(email):
@@ -530,15 +536,20 @@ def edit_user(email):
     return jsonify({"status": "success"})
 
 
-# --- STANDARD ROUTES ---
+# --- STANDARD SECURE ROUTES (PROTECTED BY @login_required) ---
 
 @main_bp.route('/architecture')
-def architecture(): return render_template('architecture.html')
+@login_required
+def architecture(): 
+    return render_template('architecture.html')
 
 @main_bp.route('/python-info')
-def python_info(): return render_template('python_info.html')
+@login_required
+def python_info(): 
+    return render_template('python_info.html')
 
 @main_bp.route('/encrypt', methods=['GET', 'POST'])
+@login_required
 def encryptor():
     result = ""
     if request.method == 'POST':
@@ -552,6 +563,7 @@ def encryptor():
     return render_template('encrypt.html', result=result)
 
 @main_bp.route('/decrypt', methods=['GET', 'POST'])
+@login_required
 def decryptor():
     result = ""
     status = "waiting"
@@ -576,6 +588,7 @@ def decryptor():
     return render_template('decrypt.html', result=result, status=status)
 
 @main_bp.route('/darkweb', methods=['GET', 'POST'])
+@login_required
 def darkweb():
     breaches = None
     query = ""
@@ -599,6 +612,7 @@ def darkweb():
     return render_template('darkweb.html', breaches=breaches, query=query, logs=logs)
 
 @main_bp.route('/chatbot', methods=['GET', 'POST'])
+@login_required
 def chatbot():
     response = ""
     user_input = ""
@@ -608,6 +622,7 @@ def chatbot():
     return render_template('chatbot.html', response=response, last_msg=user_input)
 
 @main_bp.route('/stego', methods=['GET', 'POST'])
+@login_required
 def stego():
     message = ""
     mode = "encode"
@@ -616,13 +631,12 @@ def stego():
     base_dir = os.path.abspath(os.path.dirname(__file__))
     static_dir = os.path.join(base_dir, 'static')
     
-    # Get current logged-in user for the activity stream
     current_user = session.get('user', 'Unknown User')
     
     if request.method == 'POST':
         mode = request.form.get('mode')
-        stego_type = request.form.get('stego_type', 'image') # Differentiates audio vs image
-        file = request.files.get('carrier_file') # Unified file input name
+        stego_type = request.form.get('stego_type', 'image') 
+        file = request.files.get('carrier_file') 
         
         if file:
             if mode == 'encode':
@@ -638,7 +652,6 @@ def stego():
                         if success:
                             show_download = True
                             download_type = 'image'
-                            # LOG ACTIVITY TO DASHBOARD
                             log_activity(current_user, "Stego Drive: Encoded Image Payload")
                             
                     elif stego_type == 'audio':
@@ -652,7 +665,6 @@ def stego():
                         if success:
                             show_download = True
                             download_type = 'audio'
-                            # LOG ACTIVITY TO DASHBOARD
                             log_activity(current_user, f"Stego Drive: Encoded Audio Payload ({ext.upper()})")
                             
             elif mode == 'decode':
@@ -660,7 +672,6 @@ def stego():
                     filepath = os.path.join(static_dir, 'stego_upload.png')
                     file.save(filepath)
                     message = stego_engine.decode(filepath)
-                    # LOG ACTIVITY TO DASHBOARD (Only log that they tried to decode, keep data safe)
                     log_activity(current_user, "Stego Drive: Extracted Image Payload")
                     
                 elif stego_type == 'audio':
@@ -668,7 +679,6 @@ def stego():
                     filepath = os.path.join(static_dir, f'stego_audio_upload{ext}')
                     file.save(filepath)
                     message = stego_engine.decode_audio(filepath)
-                    # LOG ACTIVITY TO DASHBOARD
                     log_activity(current_user, f"Stego Drive: Extracted Audio Payload ({ext.upper()})")
         else: 
             message = "Error: Please upload a valid carrier file."
@@ -676,17 +686,19 @@ def stego():
     return render_template('stego.html', message=message, show_download=show_download, download_type=download_type)
 
 @main_bp.route('/download_stego')
+@login_required
 def download_stego():
     try: return send_file('app/static/stego_result.png', as_attachment=True, download_name='encrypted_image.png')
     except FileNotFoundError: return send_file('static/stego_result.png', as_attachment=True, download_name='encrypted_image.png')
 
 @main_bp.route('/download_stego_audio')
+@login_required
 def download_stego_audio():
-    # Audio results are strictly downloaded as WAV to preserve integrity
     try: return send_file('app/static/stego_audio_result.wav', as_attachment=True, download_name='encrypted_audio.wav')
     except FileNotFoundError: return send_file('static/stego_audio_result.wav', as_attachment=True, download_name='encrypted_audio.wav')
 
 @main_bp.route('/ips', methods=['GET', 'POST'])
+@login_required
 def ips():
     status = "WAITING FOR TRAFFIC..."
     alerts = []
@@ -697,6 +709,7 @@ def ips():
     return render_template('ips.html', status=status, alerts=alerts, packet=test_packet)
 
 @main_bp.route('/dpi', methods=['GET', 'POST'])
+@login_required
 def dpi():
     analysis = None
     raw_input = ""
@@ -709,6 +722,7 @@ def dpi():
     return render_template('dpi.html', analysis=analysis, raw_input=raw_input)
 
 @main_bp.route('/sandbox', methods=['GET', 'POST'])
+@login_required
 def sandbox():
     output = ""
     code = ""
@@ -717,10 +731,8 @@ def sandbox():
         output = code_runner.execute(code)
     return render_template('sandbox.html', output=output, code=code)
 
-
-# --- NEW MODULE ROUTES (AI, Vault, Feed) ---
-
 @main_bp.route('/password-ai', methods=['GET', 'POST'])
+@login_required
 def password_ai():
     analysis = None
     pwd_input = ""
@@ -734,20 +746,16 @@ def password_ai():
             custom_word = request.form.get('custom_word', '')
             requested_length = int(request.form.get('length', 16))
             
-            # Enforce a safe minimum length (Base word + at least 4 random characters)
             target_length = max(requested_length, len(custom_word) + 4)
             
-            # Define secure character pools
             uppers = string.ascii_uppercase
             lowers = string.ascii_lowercase
             digits = string.digits
             symbols = "!@#$%^&*()-_=+"
             all_chars = uppers + lowers + digits + symbols
             
-            # Cryptographically secure randomizer
             secure_random = random.SystemRandom()
             
-            # Guarantee at least one of each strong character type in the filler
             filler_chars = [
                 secure_random.choice(uppers),
                 secure_random.choice(lowers),
@@ -755,24 +763,20 @@ def password_ai():
                 secure_random.choice(symbols)
             ]
             
-            # Add remaining random characters to meet the target length
             remaining_length = target_length - len(custom_word) - len(filler_chars)
             for _ in range(max(0, remaining_length)):
                 filler_chars.append(secure_random.choice(all_chars))
                 
-            # Shuffle the filler characters completely
             secure_random.shuffle(filler_chars)
-            
-            # Pick a random spot to insert the ENTIRE base word
             insert_pos = secure_random.randint(0, len(filler_chars))
             filler_chars.insert(insert_pos, custom_word)
             
-            # Rejoin into a final string
             suggested_pwd = ''.join(filler_chars)
             
     return render_template('password.html', analysis=analysis, pwd_input=pwd_input, suggested_pwd=suggested_pwd)
 
 @main_bp.route('/profiler', methods=['GET', 'POST'])
+@login_required
 def profiler():
     profile = None
     text_input = ""
@@ -783,8 +787,9 @@ def profiler():
 
 # --- MONGODB VAULT IMPLEMENTATION ---
 @main_bp.route('/vault', methods=['GET', 'POST'])
+@login_required
 def password_vault():
-    if 'user' not in session or session.get('role') != 'user':
+    if session.get('role') != 'user':
         return redirect('/') 
         
     current_email = session['user']
@@ -833,8 +838,9 @@ def password_vault():
     return render_template('vault.html', message=message, vault_data=saved_passwords)
 
 
-# --- LIVE CYBER DATA API (AJAX FETCH FOR CYBER FEED) ---
+# --- LIVE CYBER DATA API ---
 @main_bp.route('/api/cyber-data/<category>')
+@login_required
 def cyber_data_api(category):
     if category == 'news':
         try:
@@ -872,6 +878,7 @@ def cyber_data_api(category):
     return jsonify([])
 
 @main_bp.route('/cyber-feed', methods=['GET', 'POST'])
+@login_required
 def cyber_feed():
     agent_response = ""
     user_query = ""

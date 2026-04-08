@@ -105,6 +105,8 @@
     <h1 class="glitch-header mt-5">DEEP_SCAN // V4</h1>
 
     <form method="POST" class="search-container" onsubmit="triggerScan()">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
         <input type="text" name="query" class="search-input" placeholder="ENTER IDENTIFIER..." value="{{ query }}" autocomplete="off">
         <button type="submit" class="search-btn" id="scanBtn">INITIATE</button>
     </form>

@@ -184,6 +184,8 @@
     <div class="agent-box">
         <h3><i class="fas fa-robot fa-spin-pulse"></i> CYBER INTEL AGENT</h3>
         <form method="POST" class="input-group" id="agentForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
             <input type="text" name="agent_query" placeholder="Ask specific questions about any cyber attack, vulnerability, or news story..." value="{{ last_query }}" required autocomplete="off">
             <button type="submit" class="btn-agent">EXECUTE QUERY</button>
         </form>

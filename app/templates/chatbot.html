@@ -113,6 +113,8 @@
         </div>
 
         <form method="POST" class="input-deck" id="chatForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
             <input type="text" name="message" class="cyber-input" placeholder="Execute command or query..." autocomplete="off" autofocus required>
             <button type="submit" class="btn-send">TX</button>
         </form>

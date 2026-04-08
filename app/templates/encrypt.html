@@ -67,6 +67,8 @@
             <h2 class="text-center mb-4" style="color: #00f3ff; text-shadow: 0 0 10px #00f3ff;">/// DATA LOCKER</h2>
             
             <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                
                 <label>SECURE PAYLOAD</label>
                 <input type="text" name="text" class="cyber-input" placeholder="ENTER SENSITIVE DATA..." required autocomplete="off">
                 <label>ENCRYPTION KEY</label>

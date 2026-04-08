@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>NEURO-NET | SECURE ACCESS</title>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Rajdhani:wght@500;700&family=Tiro+Devanagari+Sanskrit&display=swap" rel="stylesheet">
     
@@ -292,6 +293,9 @@
 </div>
 
 <script>
+    // Fetch the CSRF token from the meta tag
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
     // TYPING TITLE
     const text = "NEURO-NET PORTAL"; let index = 0;
     setTimeout(() => typeWriter(), 1000);
@@ -377,7 +381,10 @@
 
         fetch('/login', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken // Added CSRF Token
+            },
             body: JSON.stringify({ type: type, payload: payload, password: password, behavior: { keys: keystrokes } })
         })
         .then(res => res.json())
@@ -431,7 +438,10 @@
 
         fetch('/register', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken // Added CSRF Token
+            },
             body: JSON.stringify({ name: name, email: email, phone: phone, password: pass })
         })
         .then(res => res.json())

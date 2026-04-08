@@ -188,6 +188,8 @@
         <div class="corner-bracket bl"></div><div class="corner-bracket br"></div>
 
         <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
             <div class="input-label">
                 <span><i class="fas fa-file-code"></i> ENCRYPTED PAYLOAD (HEX)</span>
                 <span>TYPE: STRING</span>

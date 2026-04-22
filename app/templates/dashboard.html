@@ -444,7 +444,7 @@
         fetch(`/admin/${action}/${email}`, { 
             method: 'POST',
             headers: {
-                'X-CSRFToken': csrfToken // Added CSRF Token
+                'X-CSRFToken': csrfToken
             }
         })
         .then(res => res.json())
@@ -482,7 +482,7 @@
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken // Added CSRF Token
+                'X-CSRFToken': csrfToken
             },
             body: JSON.stringify(payload)
         })

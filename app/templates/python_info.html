@@ -80,19 +80,21 @@
             <div class="terminal-panel">
                 <div class="panel-title">LOADED_LIBRARIES</div>
                 <ul>
-                    <li><span class="keyword">import</span> flask <span class="val"># Web Routing & Jinja2 Templates</span></li>
-                    <li><span class="keyword">import</span> google.genai <span class="val"># Gemini 2.5 Flash Integration</span></li>
-                    <li><span class="keyword">import</span> threading <span class="val"># OS Process Isolation (Sandboxing)</span></li>
-                    <li><span class="keyword">import</span> re <span class="val"># Regex Pattern Matching (IDS)</span></li>
-                    <li><span class="keyword">from</span> PIL <span class="keyword">import</span> Image <span class="val"># Steganography (LSB)</span></li>
-                    <li><span class="keyword">import</span> random <span class="val"># Entropy Generation (DPI)</span></li>
+                    <li><span class="keyword">import</span> flask <span class="val"># Web Routing & API Endpoints</span></li>
+                    <li><span class="keyword">import</span> google.genai <span class="val"># Gemini 2.5 Flash Neural Core</span></li>
+                    <li><span class="keyword">import</span> threading <span class="val"># OS Process Async Isolation</span></li>
+                    <li><span class="keyword">import</span> contextlib, io <span class="val"># Sandbox STDIO Redirection</span></li>
+                    <li><span class="keyword">from</span> PIL <span class="keyword">import</span> Image <span class="val"># Visual LSB Steganography</span></li>
+                    <li><span class="keyword">import</span> wave, pydub <span class="val"># Audio Frequency Manipulation</span></li>
                 </ul>
                 
                 <div class="mt-4 panel-title">CUSTOM_MODULES</div>
                 <ul>
-                    <li><span class="val">core.ai_integrator</span> >> Neural Processing Unit</li>
-                    <li><span class="val">core.os_sim</span> >> Kernel Sandbox Manager</li>
-                    <li><span class="val">core.security_modules</span> >> Stego, IPS, DPI Engines</li>
+                    <li><span class="val">core.ai_integrator</span> >> Round-Robin AI Load Balancer</li>
+                    <li><span class="val">core.sandbox_exec</span> >> Isolated Python Execution Engine</li>
+                    <li><span class="val">core.os_sim</span> >> Asynchronous Thread Kernel</li>
+                    <li><span class="val">core.structures</span> >> Prefix-Trie Threat Detection</li>
+                    <li><span class="val">core.security_modules</span> >> Multimedia Cryptography Core</li>
                 </ul>
             </div>
         </div>
@@ -112,20 +114,20 @@
                 <div class="panel-title">SYSTEM_CAPABILITIES</div>
                 <div class="row">
                     <div class="col-md-3 mb-3">
-                        <strong style="color:#fff;">ENCRYPTION</strong><br>
-                        <small>XOR Bitwise Logic with Salt Validation checks.</small>
+                        <strong style="color:#fff;">MULTIMEDIA STEGO</strong><br>
+                        <small>Lossless LSB binary injection for RGB Images and WAV Audio formats.</small>
                     </div>
                     <div class="col-md-3 mb-3">
-                        <strong style="color:#fff;">AI ANALYSIS</strong><br>
-                        <small>Real-time intent scoring via Gemini 2.5 API.</small>
+                        <strong style="color:#fff;">AI PROFILING</strong><br>
+                        <small>Real-time threat evaluation, intent scoring, and OSINT synthesis via AI.</small>
                     </div>
                     <div class="col-md-3 mb-3">
-                        <strong style="color:#fff;">STEGANOGRAPHY</strong><br>
-                        <small>LSB Pixel Injection via Pillow Library.</small>
+                        <strong style="color:#fff;">CODE SANDBOX</strong><br>
+                        <small>Secure untrusted Python execution with contextlib STDOUT/STDERR stream capturing.</small>
                     </div>
                     <div class="col-md-3 mb-3">
-                        <strong style="color:#fff;">BEHAVIORAL</strong><br>
-                        <small>Keystroke Dynamics (WPM/Backspace) Profiling.</small>
+                        <strong style="color:#fff;">DATA STRUCTURES</strong><br>
+                        <small>O(m) complexity Signature Tries and Math-driven Shannon Entropy algorithms.</small>
                     </div>
                 </div>
             </div>
@@ -142,14 +144,15 @@
     // --- LIVE LOG TYPING EFFECT ---
     const log = document.getElementById('codeLog');
     const lines = [
-        "Initializing core.ai_integrator.NeuroAI()... OK",
-        "Loading specific signatures from core.structures.Trie...",
-        "Starting threading.Thread(target=sandbox_manager._process)...",
-        "[ENCRYPTOR] Validating salt checksum...",
-        "[DECRYPTOR] XOR transformation applied...",
-        "[DARK_WEB] Node relay handshake established (44ms)...",
-        "[STEGO] Encoding payload into RGB matrix...",
-        "[DPI] Calculating Shannon Entropy: 4.55 bits...",
+        "Initializing core.ai_integrator.NeuroAI() load balancer... OK",
+        "Loading payload signatures into core.structures.SignatureTrie...",
+        "Starting threading.Thread(target=os_sim._process_safe)...",
+        "[SANDBOX] Redirecting STDOUT and STDERR via contextlib...",
+        "[ENCRYPTOR] Applying XOR transformation with salt...",
+        "[DARKWEB] Fetching OSINT breach data from AI core...",
+        "[STEGO] Embedding binary into RGB matrix...",
+        "[STEGO] Converting MP3 to lossless WAV for LSB injection...",
+        "[PASSWORD_AI] Calculating Shannon Entropy metric...",
         "Garbage collection: freed 14 objects."
     ];
 

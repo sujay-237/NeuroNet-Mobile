@@ -1,3 +1,4 @@
+from functools import wraps
 from flask import Blueprint, render_template, request, jsonify, send_file, session, redirect
 import datetime
 import random
@@ -62,6 +63,17 @@ code_runner = CodeSandbox()
 
 # --- GLOBAL STATE ---
 SERVER_START_TIME = time.time()
+
+
+# --- AUTHENTICATION DECORATOR ---
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'role' not in session:
+            return redirect('/')
+        return f(*args, **kwargs)
+    return decorated_function
+
 
 # --- HELPER FUNCTIONS ---
 def log_activity(email, action):
@@ -534,12 +546,17 @@ def edit_user(email):
 # --- STANDARD ROUTES ---
 
 @main_bp.route('/architecture')
-def architecture(): return render_template('architecture.html')
+@login_required
+def architecture(): 
+    return render_template('architecture.html')
 
 @main_bp.route('/python-info')
-def python_info(): return render_template('python_info.html')
+@login_required
+def python_info(): 
+    return render_template('python_info.html')
 
 @main_bp.route('/encrypt', methods=['GET', 'POST'])
+@login_required
 def encryptor():
     result = ""
     if request.method == 'POST':
@@ -553,6 +570,7 @@ def encryptor():
     return render_template('encrypt.html', result=result)
 
 @main_bp.route('/decrypt', methods=['GET', 'POST'])
+@login_required
 def decryptor():
     result = ""
     status = "waiting"
@@ -577,6 +595,7 @@ def decryptor():
     return render_template('decrypt.html', result=result, status=status)
 
 @main_bp.route('/darkweb', methods=['GET', 'POST'])
+@login_required
 def darkweb():
     breaches = None
     query = ""
@@ -600,6 +619,7 @@ def darkweb():
     return render_template('darkweb.html', breaches=breaches, query=query, logs=logs)
 
 @main_bp.route('/chatbot', methods=['GET', 'POST'])
+@login_required
 def chatbot():
     response = ""
     user_input = ""
@@ -609,6 +629,7 @@ def chatbot():
     return render_template('chatbot.html', response=response, last_msg=user_input)
 
 @main_bp.route('/stego', methods=['GET', 'POST'])
+@login_required
 def stego():
     message = ""
     mode = "encode"
@@ -673,6 +694,7 @@ def stego():
     return render_template('stego.html', message=message, show_download=show_download, download_type=download_type)
 
 @main_bp.route('/download_stego')
+@login_required
 def download_stego():
     temp_dir = tempfile.gettempdir()
     filepath = os.path.join(temp_dir, 'stego_result.png')
@@ -683,6 +705,7 @@ def download_stego():
         return "File not found or expired.", 404
 
 @main_bp.route('/download_stego_audio')
+@login_required
 def download_stego_audio():
     temp_dir = tempfile.gettempdir()
     filepath = os.path.join(temp_dir, 'stego_audio_result.wav')
@@ -693,6 +716,7 @@ def download_stego_audio():
         return "File not found or expired.", 404
 
 @main_bp.route('/sandbox', methods=['GET', 'POST'])
+@login_required
 def sandbox():
     output = ""
     code = ""
@@ -705,6 +729,7 @@ def sandbox():
 # --- NEW MODULE ROUTES (AI, Vault, Feed) ---
 
 @main_bp.route('/password-ai', methods=['GET', 'POST'])
+@login_required
 def password_ai():
     analysis = None
     pwd_input = ""
@@ -747,6 +772,7 @@ def password_ai():
     return render_template('password.html', analysis=analysis, pwd_input=pwd_input, suggested_pwd=suggested_pwd)
 
 @main_bp.route('/profiler', methods=['GET', 'POST'])
+@login_required
 def profiler():
     profile = None
     text_input = ""
@@ -757,6 +783,7 @@ def profiler():
 
 # --- MONGODB VAULT IMPLEMENTATION ---
 @main_bp.route('/vault', methods=['GET', 'POST'])
+@login_required
 def password_vault():
     if 'user' not in session or session.get('role') != 'user':
         return redirect('/') 
@@ -809,6 +836,7 @@ def password_vault():
 
 # --- LIVE CYBER DATA API (AJAX FETCH FOR CYBER FEED) ---
 @main_bp.route('/api/cyber-data/<category>')
+@login_required
 def cyber_data_api(category):
     if category == 'news':
         try:
@@ -846,6 +874,7 @@ def cyber_data_api(category):
     return jsonify([])
 
 @main_bp.route('/cyber-feed', methods=['GET', 'POST'])
+@login_required
 def cyber_feed():
     agent_response = ""
     user_query = ""

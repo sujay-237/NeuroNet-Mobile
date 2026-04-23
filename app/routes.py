@@ -384,6 +384,7 @@ def handle_login():
                         if user['status'] != 'approved':
                             return jsonify({"status": "failed", "message": "Account pending Admin approval."})
                         
+                        session.permanent = True
                         session['role'] = 'user'
                         session['user'] = payload
                         log_activity(payload, "Logged In")

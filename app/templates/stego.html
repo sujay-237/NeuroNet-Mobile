@@ -102,10 +102,13 @@
 
         /* File Upload Zone */
         .drop-zone {
-            box-sizing: border-box; /* Ensures padding and borders don't affect width/height calculations */
+            box-sizing: border-box;
+            height: 220px; /* Lock the height to prevent expanding */
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
             border: 2px dashed var(--border-dim); background: rgba(255, 51, 51, 0.02);
-            padding: 40px; text-align: center; cursor: pointer; transition: 0.3s;
+            padding: 20px; text-align: center; cursor: pointer; transition: 0.3s;
             position: relative; overflow: hidden; margin-bottom: 25px;
+            width: 100%;
         }
         .drop-zone:hover, .drop-zone.dragover {
             border-color: var(--core-gold); background: rgba(255, 204, 0, 0.05);
@@ -120,7 +123,6 @@
         }
         .drop-zone.scanning .scanner-bar { opacity: 1; animation: scanDown 1.5s ease-in-out infinite; }
         
-        /* Fixed keyframes to prevent container expansion/reflow */
         @keyframes scanDown { 
             0% { top: 0; } 
             50% { top: calc(100% - 3px); } 
@@ -129,6 +131,10 @@
 
         .file-status {
             font-family: 'JetBrains Mono'; margin-top: 15px; color: #888; font-size: 0.9rem;
+            width: 100%; 
+            white-space: nowrap; /* Prevent wrapping to a new line */
+            overflow: hidden; 
+            text-overflow: ellipsis; /* Add "..." to long file names */
         }
 
         /* Inputs */
@@ -269,8 +275,8 @@
             <div class="drop-zone" id="dropZone">
                 <div class="scanner-bar"></div>
                 <input type="file" name="carrier_file" id="fileInput" accept="image/png" hidden>
-                <div style="font-size: 3rem; color: #444; margin-bottom: 10px;" id="dropIcon"><i class="fas fa-microchip"></i></div>
-                <h4 style="font-family:'Orbitron'; letter-spacing:2px; color:var(--core-red);">DROP CARRIER FILE</h4>
+                <div style="font-size: 3rem; color: #444; margin-bottom: 10px; line-height: 1;" id="dropIcon"><i class="fas fa-microchip"></i></div>
+                <h4 style="font-family:'Orbitron'; letter-spacing:2px; color:var(--core-red); margin: 0 0 10px 0;">DROP CARRIER FILE</h4>
                 <div class="file-status" id="fileStatus">Accepted Format: PNG (Lossless)</div>
             </div>
 

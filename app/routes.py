@@ -303,8 +303,18 @@ def login():
 
 @main_bp.route('/logout')
 def logout():
-    session.clear()
-    return redirect('/')
+    session.clear() # Clears the Flask session
+    response = redirect('/')
+    
+    # Forcefully tell the browser to destroy the VIP cookie
+    response.set_cookie('session', '', expires=0)
+    
+    # Add aggressive anti-caching headers to the redirect
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    
+    return response
 
 @main_bp.route('/api/stats')
 def api_stats(): 

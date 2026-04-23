@@ -11,6 +11,7 @@ import hashlib
 import string
 import secrets
 import xml.etree.ElementTree as ET
+import tempfile
 from collections import Counter
 from supabase import create_client, Client 
 from pymongo import MongoClient
@@ -613,9 +614,9 @@ def stego():
     mode = "encode"
     show_download = False
     download_type = "image"
-    base_dir = os.path.abspath(os.path.dirname(__file__))
-    static_dir = os.path.join(base_dir, 'static')
     
+    # Use the system's temporary directory instead of the static folder
+    temp_dir = tempfile.gettempdir()
     current_user = session.get('user', 'Unknown User')
     
     if request.method == 'POST':
@@ -630,7 +631,8 @@ def stego():
                     message = "Error: No secret text provided."
                 else:
                     if stego_type == 'image':
-                        filepath = os.path.join(static_dir, 'stego_result.png')
+                        # Save to /tmp
+                        filepath = os.path.join(temp_dir, 'stego_result.png')
                         file.save(filepath)
                         success, msg = stego_engine.encode(filepath, text, filepath)
                         message = msg
@@ -641,8 +643,8 @@ def stego():
                             
                     elif stego_type == 'audio':
                         ext = '.mp3' if file.filename.lower().endswith('.mp3') else '.wav'
-                        filepath = os.path.join(static_dir, f'stego_audio_input{ext}')
-                        outpath = os.path.join(static_dir, 'stego_audio_result.wav') 
+                        filepath = os.path.join(temp_dir, f'stego_audio_input{ext}')
+                        outpath = os.path.join(temp_dir, 'stego_audio_result.wav') 
                         
                         file.save(filepath)
                         success, msg = stego_engine.encode_audio(filepath, text, outpath)
@@ -654,14 +656,14 @@ def stego():
                             
             elif mode == 'decode':
                 if stego_type == 'image':
-                    filepath = os.path.join(static_dir, 'stego_upload.png')
+                    filepath = os.path.join(temp_dir, 'stego_upload.png')
                     file.save(filepath)
                     message = stego_engine.decode(filepath)
                     log_activity(current_user, "Stego Drive: Extracted Image Payload")
                     
                 elif stego_type == 'audio':
                     ext = '.mp3' if file.filename.lower().endswith('.mp3') else '.wav'
-                    filepath = os.path.join(static_dir, f'stego_audio_upload{ext}')
+                    filepath = os.path.join(temp_dir, f'stego_audio_upload{ext}')
                     file.save(filepath)
                     message = stego_engine.decode_audio(filepath)
                     log_activity(current_user, f"Stego Drive: Extracted Audio Payload ({ext.upper()})")
@@ -672,13 +674,23 @@ def stego():
 
 @main_bp.route('/download_stego')
 def download_stego():
-    try: return send_file('app/static/stego_result.png', as_attachment=True, download_name='encrypted_image.png')
-    except FileNotFoundError: return send_file('static/stego_result.png', as_attachment=True, download_name='encrypted_image.png')
+    temp_dir = tempfile.gettempdir()
+    filepath = os.path.join(temp_dir, 'stego_result.png')
+    
+    try: 
+        return send_file(filepath, as_attachment=True, download_name='encrypted_image.png')
+    except FileNotFoundError: 
+        return "File not found or expired.", 404
 
 @main_bp.route('/download_stego_audio')
 def download_stego_audio():
-    try: return send_file('app/static/stego_audio_result.wav', as_attachment=True, download_name='encrypted_audio.wav')
-    except FileNotFoundError: return send_file('static/stego_audio_result.wav', as_attachment=True, download_name='encrypted_audio.wav')
+    temp_dir = tempfile.gettempdir()
+    filepath = os.path.join(temp_dir, 'stego_audio_result.wav')
+    
+    try: 
+        return send_file(filepath, as_attachment=True, download_name='encrypted_audio.wav')
+    except FileNotFoundError: 
+        return "File not found or expired.", 404
 
 @main_bp.route('/sandbox', methods=['GET', 'POST'])
 def sandbox():

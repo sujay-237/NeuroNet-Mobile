@@ -1,4 +1,3 @@
-from functools import wraps
 from flask import Blueprint, render_template, request, jsonify, send_file, session, redirect
 import datetime
 import random
@@ -13,7 +12,6 @@ import string
 import secrets
 import xml.etree.ElementTree as ET
 import tempfile
-import uuid
 from collections import Counter
 from supabase import create_client, Client 
 from pymongo import MongoClient
@@ -65,34 +63,6 @@ code_runner = CodeSandbox()
 # --- GLOBAL STATE ---
 SERVER_START_TIME = time.time()
 
-
-# --- VERCEL CACHE BUSTER ---
-@main_bp.after_request
-def add_cache_control(response):
-    """Forces Vercel to NEVER cache the pages, ensuring the login check runs every time."""
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "0"
-    return response
-
-
-# --- AUTHENTICATION DECORATOR ---
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        # 1. If not logged in at all, redirect to login
-        if 'role' not in session:
-            return redirect('/')
-            
-        # 2. PREVENT GHOST ESCAPE: If they are an attacker in the tarpit, keep them there
-        if session.get('role') == 'ghost':
-            return redirect('/ghost')
-            
-        # 3. Proceed normally for 'user' or 'admin'
-        return f(*args, **kwargs)
-    return decorated_function
-
-
 # --- HELPER FUNCTIONS ---
 def log_activity(email, action):
     """Logs user activity to Supabase"""
@@ -115,10 +85,13 @@ def get_system_stats():
 
     try:
         import psutil
+        # Get accurate CPU and Memory data
         cpu_percent = psutil.cpu_percent(interval=0.1)
         mem = psutil.virtual_memory()
         mem_percent = mem.percent
         memory_str = f"{mem.used // (1024*1024)} MB"
+        
+        # Simulate an active network load percentage between 1 and 15% for visual effect
         net_percent = random.randint(1, 15)
 
         return {
@@ -178,6 +151,7 @@ def analyze_psychology(text):
     ai_result = parse_ai_json(prompt)
     if ai_result: return ai_result
     
+    # Fallback if AI is offline
     return {
         "threat_score": 50, "phishing_probability": 50,
         "tactics": ["AI Offline - Keyword Analysis Defaulted"],
@@ -259,11 +233,12 @@ def analyze_password_strength(password):
     length = len(password)
     entropy = length * math.log2(pool_size) if pool_size > 0 else 0
 
-    if re.search(r'(.)\1{2,}', password): entropy -= 10 
+    # Penalties for predictable patterns
+    if re.search(r'(.)\1{2,}', password): entropy -= 10 # Repeated chars (aaa)
     if re.search(r'(123|abc|qwerty|password|admin)', password.lower()): entropy -= 25 
     
     entropy = max(0, entropy)
-    score = min(int((entropy / 120) * 100), 100) 
+    score = min(int((entropy / 120) * 100), 100) # 120+ bits is military grade
 
     crack_time = "INSTANT"
     verdict = "CRITICAL RISK"
@@ -295,7 +270,7 @@ def analyze_password_strength(password):
     }
 
 
-# --- PUBLIC & AUTH ROUTES ---
+# --- ROUTES ---
 
 @main_bp.route('/')
 def login(): 
@@ -303,23 +278,13 @@ def login():
 
 @main_bp.route('/logout')
 def logout():
-    session.clear() # Clears the Flask session
-    response = redirect('/')
-    
-    # Forcefully tell the browser to destroy the VIP cookie
-    response.set_cookie('session', '', expires=0)
-    
-    # Add aggressive anti-caching headers to the redirect
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "0"
-    
-    return response
+    session.clear()
+    return redirect('/')
 
 @main_bp.route('/api/stats')
-def api_stats(): 
-    return jsonify(get_system_stats())
+def api_stats(): return jsonify(get_system_stats())
 
+# --- AUTHENTICATION ROUTES (SUPABASE INTEGRATED) ---
 
 @main_bp.route('/register', methods=['POST'])
 def register_user():
@@ -394,7 +359,6 @@ def handle_login():
                         if user['status'] != 'approved':
                             return jsonify({"status": "failed", "message": "Account pending Admin approval."})
                         
-                        session.permanent = True
                         session['role'] = 'user'
                         session['user'] = payload
                         log_activity(payload, "Logged In")
@@ -402,7 +366,7 @@ def handle_login():
             except Exception as e:
                 print(f"Login Check Error: {e}")
 
-    # 3. DETERMINE IF SUSPICIOUS
+    # --- 3. DETERMINE IF SUSPICIOUS (ATTACK/SQLi) OR JUST INVALID ---
     sql_patterns = re.compile(r"(--|\bOR\b\s+.+?=|<script>|\bUNION\b|;\s*(DROP|SELECT|UPDATE|INSERT|DELETE)|['\"]\s*=\s*['\"])", re.IGNORECASE)
     
     is_suspicious = False
@@ -414,7 +378,7 @@ def handle_login():
     if not is_suspicious:
         return jsonify({"status": "failed", "message": "Invalid login credentials."})
 
-    # 4. MALICIOUS ATTACK LOGGING
+    # --- 4. MALICIOUS ATTACK LOGGING & TARPITTING ---
     combined_payload = f"ID: {payload} | Pass: {password}"
     
     keystrokes = behavior.get('keys', [])
@@ -451,7 +415,7 @@ def handle_login():
         try: supabase.table('attack_logs').insert(log_entry).execute()
         except Exception: pass
 
-    # TRAP: Redirect to Ghost Dashboard
+    # TRAP: Redirect to Ghost Dashboard if high threat score or abnormal typing
     if score >= 50 or wpm > 150: 
         session['role'] = 'ghost'
         session['ghost_ip'] = attacker_ip
@@ -570,17 +534,12 @@ def edit_user(email):
 # --- STANDARD ROUTES ---
 
 @main_bp.route('/architecture')
-@login_required
-def architecture(): 
-    return render_template('architecture.html')
+def architecture(): return render_template('architecture.html')
 
 @main_bp.route('/python-info')
-@login_required
-def python_info(): 
-    return render_template('python_info.html')
+def python_info(): return render_template('python_info.html')
 
 @main_bp.route('/encrypt', methods=['GET', 'POST'])
-@login_required
 def encryptor():
     result = ""
     if request.method == 'POST':
@@ -594,7 +553,6 @@ def encryptor():
     return render_template('encrypt.html', result=result)
 
 @main_bp.route('/decrypt', methods=['GET', 'POST'])
-@login_required
 def decryptor():
     result = ""
     status = "waiting"
@@ -619,7 +577,6 @@ def decryptor():
     return render_template('decrypt.html', result=result, status=status)
 
 @main_bp.route('/darkweb', methods=['GET', 'POST'])
-@login_required
 def darkweb():
     breaches = None
     query = ""
@@ -643,7 +600,6 @@ def darkweb():
     return render_template('darkweb.html', breaches=breaches, query=query, logs=logs)
 
 @main_bp.route('/chatbot', methods=['GET', 'POST'])
-@login_required
 def chatbot():
     response = ""
     user_input = ""
@@ -653,13 +609,13 @@ def chatbot():
     return render_template('chatbot.html', response=response, last_msg=user_input)
 
 @main_bp.route('/stego', methods=['GET', 'POST'])
-@login_required
 def stego():
     message = ""
     mode = "encode"
     show_download = False
     download_type = "image"
     
+    # Use the system's temporary directory instead of the static folder
     temp_dir = tempfile.gettempdir()
     current_user = session.get('user', 'Unknown User')
     
@@ -669,51 +625,45 @@ def stego():
         file = request.files.get('carrier_file') 
         
         if file:
-            # Generate unique IDs to prevent file collisions across different users
-            unique_id = uuid.uuid4().hex 
-            
             if mode == 'encode':
                 text = request.form.get('secret_text')
                 if not text: 
                     message = "Error: No secret text provided."
                 else:
                     if stego_type == 'image':
-                        input_path = os.path.join(temp_dir, f'stego_input_{unique_id}.png')
-                        output_path = os.path.join(temp_dir, f'stego_result_{unique_id}.png')
-                        file.save(input_path)
-                        
-                        success, msg = stego_engine.encode(input_path, text, output_path)
+                        # Save to /tmp
+                        filepath = os.path.join(temp_dir, 'stego_result.png')
+                        file.save(filepath)
+                        success, msg = stego_engine.encode(filepath, text, filepath)
                         message = msg
                         if success:
                             show_download = True
                             download_type = 'image'
-                            session['stego_download_file'] = output_path
                             log_activity(current_user, "Stego Drive: Encoded Image Payload")
                             
                     elif stego_type == 'audio':
                         ext = '.mp3' if file.filename.lower().endswith('.mp3') else '.wav'
-                        input_path = os.path.join(temp_dir, f'stego_audio_input_{unique_id}{ext}')
-                        output_path = os.path.join(temp_dir, f'stego_audio_result_{unique_id}.wav') 
+                        filepath = os.path.join(temp_dir, f'stego_audio_input{ext}')
+                        outpath = os.path.join(temp_dir, 'stego_audio_result.wav') 
                         
-                        file.save(input_path)
-                        success, msg = stego_engine.encode_audio(input_path, text, output_path)
+                        file.save(filepath)
+                        success, msg = stego_engine.encode_audio(filepath, text, outpath)
                         message = msg
                         if success:
                             show_download = True
                             download_type = 'audio'
-                            session['stego_audio_download_file'] = output_path
                             log_activity(current_user, f"Stego Drive: Encoded Audio Payload ({ext.upper()})")
                             
             elif mode == 'decode':
                 if stego_type == 'image':
-                    filepath = os.path.join(temp_dir, f'stego_upload_{unique_id}.png')
+                    filepath = os.path.join(temp_dir, 'stego_upload.png')
                     file.save(filepath)
                     message = stego_engine.decode(filepath)
                     log_activity(current_user, "Stego Drive: Extracted Image Payload")
                     
                 elif stego_type == 'audio':
                     ext = '.mp3' if file.filename.lower().endswith('.mp3') else '.wav'
-                    filepath = os.path.join(temp_dir, f'stego_audio_upload_{unique_id}{ext}')
+                    filepath = os.path.join(temp_dir, f'stego_audio_upload{ext}')
                     file.save(filepath)
                     message = stego_engine.decode_audio(filepath)
                     log_activity(current_user, f"Stego Drive: Extracted Audio Payload ({ext.upper()})")
@@ -723,25 +673,26 @@ def stego():
     return render_template('stego.html', message=message, show_download=show_download, download_type=download_type)
 
 @main_bp.route('/download_stego')
-@login_required
 def download_stego():
-    filepath = session.get('stego_download_file')
-    if not filepath or not os.path.exists(filepath):
-        return "File not found or session expired.", 404
-        
-    return send_file(filepath, as_attachment=True, download_name='encrypted_image.png')
+    temp_dir = tempfile.gettempdir()
+    filepath = os.path.join(temp_dir, 'stego_result.png')
+    
+    try: 
+        return send_file(filepath, as_attachment=True, download_name='encrypted_image.png')
+    except FileNotFoundError: 
+        return "File not found or expired.", 404
 
 @main_bp.route('/download_stego_audio')
-@login_required
 def download_stego_audio():
-    filepath = session.get('stego_audio_download_file')
-    if not filepath or not os.path.exists(filepath):
-        return "File not found or session expired.", 404
-        
-    return send_file(filepath, as_attachment=True, download_name='encrypted_audio.wav')
+    temp_dir = tempfile.gettempdir()
+    filepath = os.path.join(temp_dir, 'stego_audio_result.wav')
+    
+    try: 
+        return send_file(filepath, as_attachment=True, download_name='encrypted_audio.wav')
+    except FileNotFoundError: 
+        return "File not found or expired.", 404
 
 @main_bp.route('/sandbox', methods=['GET', 'POST'])
-@login_required
 def sandbox():
     output = ""
     code = ""
@@ -754,7 +705,6 @@ def sandbox():
 # --- NEW MODULE ROUTES (AI, Vault, Feed) ---
 
 @main_bp.route('/password-ai', methods=['GET', 'POST'])
-@login_required
 def password_ai():
     analysis = None
     pwd_input = ""
@@ -797,7 +747,6 @@ def password_ai():
     return render_template('password.html', analysis=analysis, pwd_input=pwd_input, suggested_pwd=suggested_pwd)
 
 @main_bp.route('/profiler', methods=['GET', 'POST'])
-@login_required
 def profiler():
     profile = None
     text_input = ""
@@ -808,7 +757,6 @@ def profiler():
 
 # --- MONGODB VAULT IMPLEMENTATION ---
 @main_bp.route('/vault', methods=['GET', 'POST'])
-@login_required
 def password_vault():
     if 'user' not in session or session.get('role') != 'user':
         return redirect('/') 
@@ -861,7 +809,6 @@ def password_vault():
 
 # --- LIVE CYBER DATA API (AJAX FETCH FOR CYBER FEED) ---
 @main_bp.route('/api/cyber-data/<category>')
-@login_required
 def cyber_data_api(category):
     if category == 'news':
         try:
@@ -899,7 +846,6 @@ def cyber_data_api(category):
     return jsonify([])
 
 @main_bp.route('/cyber-feed', methods=['GET', 'POST'])
-@login_required
 def cyber_feed():
     agent_response = ""
     user_query = ""

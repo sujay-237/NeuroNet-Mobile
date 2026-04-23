@@ -1,5 +1,6 @@
 import os
-from flask import Flask
+from datetime import timedelta
+from flask import Flask, session
 from app.routes import main_bp
 from flask_wtf.csrf import CSRFProtect
 from flask_talisman import Talisman
@@ -14,6 +15,15 @@ def create_app():
     
     # Set a secret key for security (reads from env or uses a default)
     app.secret_key = os.getenv("FLASK_SECRET_KEY", "default_insecure_key_for_dev")
+    
+    # --- NEW: STRICT SESSION SECURITY ---
+    # Force the session to expire after 15 minutes of inactivity
+    app.permanent_session_lifetime = timedelta(minutes=15)
+    
+    # Ensure cookies are secure and cannot be accessed by JavaScript (XSS protection)
+    app.config['SESSION_COOKIE_SECURE'] = True  # Requires HTTPS
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
     
     # Enable CSRF Protection
     csrf.init_app(app)

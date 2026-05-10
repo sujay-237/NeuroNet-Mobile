@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NEURO-NET | SECURITY PROFILE</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-dark: #020204;
+            --neon-blue: #00f3ff;
+            --neon-pink: #ff0055;
+            --neon-green: #00ff9d;
+            --neon-purple: #bc13fe;
+            --neon-amber: #ffb000;
+            --glass: rgba(10, 15, 25, 0.75);
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: #fff;
+            font-family: 'Rajdhani', sans-serif;
+            overflow-x: hidden;
+            margin: 0;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        /* --- AMBIENT BACKGROUND FX --- */
+        .cyber-grid {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: 
+                linear-gradient(transparent 0%, var(--bg-dark) 100%),
+                repeating-linear-gradient(0deg, transparent 0, transparent 40px, rgba(0, 243, 255, 0.05) 40px, rgba(0, 243, 255, 0.05) 41px),
+                repeating-linear-gradient(90deg, transparent 0, transparent 40px, rgba(0, 243, 255, 0.05) 40px, rgba(0, 243, 255, 0.05) 41px);
+            transform: perspective(600px) rotateX(60deg) scale(2.5) translateY(-50px);
+            animation: gridMove 15s linear infinite;
+            z-index: -3;
+        }
+        @keyframes gridMove { 0% { background-position: 0 0; } 100% { background-position: 0 1000px; } }
+
+        .scanlines {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 4px, 3px 100%;
+            z-index: 999; pointer-events: none; opacity: 0.15;
+        }
+
+        /* --- UI COMPONENTS --- */
+        .page-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.5rem; font-weight: 900; letter-spacing: 5px;
+            color: #fff; text-shadow: 0 0 20px var(--neon-blue);
+            position: relative; display: inline-block;
+        }
+        
+        .holo-card {
+            background: var(--glass);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 243, 255, 0.2);
+            border-radius: 8px; padding: 30px;
+            position: relative; overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), inset 0 0 20px rgba(0, 243, 255, 0.05);
+            animation: slideUpFade 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+        }
+        .holo-card::before {
+            content: ''; position: absolute; top: 0; left: -100%;
+            width: 50%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 243, 255, 0.1), transparent);
+            transform: skewX(-20deg); animation: scanSweep 6s infinite;
+        }
+
+        .card-header-cyber {
+            font-size: 1.2rem; font-weight: 700; color: var(--neon-blue);
+            letter-spacing: 3px; border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 10px; margin-bottom: 25px; display: flex; justify-content: space-between;
+        }
+
+        /* --- PASSWORD SCORE RING --- */
+        .score-container { position: relative; width: 150px; height: 150px; margin: 0 auto; display: flex; align-items: center; justify-content: center; }
+        .score-ring { transform: rotate(-90deg); width: 100%; height: 100%; position: absolute; }
+        .score-circle-bg { fill: none; stroke: rgba(255,255,255,0.05); stroke-width: 8; }
+        .score-circle { fill: none; stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset 2s cubic-bezier(0.4, 0, 0.2, 1); }
+        .score-text { font-size: 2.2rem; font-weight: 700; text-shadow: 0 0 15px rgba(255,255,255,0.5); z-index: 2; }
+        
+        /* --- TERMINAL BLOCKS --- */
+        .terminal-block {
+            background: rgba(0,0,0,0.6); border-left: 4px solid var(--neon-purple);
+            padding: 15px; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;
+            color: #00ff9d; position: relative; overflow: hidden;
+        }
+
+        .diag-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+            font-family: 'JetBrains Mono'; font-size: 0.8rem;
+        }
+        .diag-item { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.1); padding: 8px; }
+        .diag-item.fail { border-color: rgba(255, 0, 85, 0.5); background: rgba(255, 0, 85, 0.05); }
+        .diag-item.pass { border-color: rgba(0, 255, 157, 0.5); background: rgba(0, 255, 157, 0.05); }
+
+        /* --- BREACH ALERTS --- */
+        .breach-alert {
+            background: rgba(255, 0, 85, 0.1); border: 1px solid var(--neon-pink);
+            padding: 15px; margin-bottom: 15px; border-radius: 4px;
+            animation: pulseRed 2s infinite;
+        }
+        .breach-clean {
+            background: rgba(0, 255, 157, 0.1); border: 1px solid var(--neon-green);
+            padding: 15px; border-radius: 4px; color: var(--neon-green);
+            text-align: center; text-shadow: 0 0 10px var(--neon-green);
+        }
+
+        /* --- INTEL CARDS --- */
+        .intel-card {
+            background: rgba(255,255,255,0.02); border: 1px solid #333;
+            padding: 20px; height: 100%; transition: 0.4s; position: relative; overflow: hidden;
+        }
+        .intel-card:hover { border-color: var(--neon-blue); transform: translateY(-5px); }
+        .intel-defense {
+            position: absolute; top: 100%; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 243, 255, 0.1); backdrop-filter: blur(5px);
+            padding: 20px; transition: top 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex; flex-direction: column; justify-content: center;
+            border-top: 2px solid var(--neon-blue);
+        }
+        .intel-card:hover .intel-defense { top: 0; }
+
+        /* ANIMATIONS */
+        @keyframes scanSweep { 0% { left: -100%; } 50% { left: 200%; } 100% { left: 200%; } }
+        @keyframes slideUpFade { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulseRed { 0%, 100% { box-shadow: 0 0 10px rgba(255,0,85,0.2); } 50% { box-shadow: 0 0 25px rgba(255,0,85,0.6); } }
+
+        .text-neon-pink { color: var(--neon-pink); text-shadow: 0 0 10px var(--neon-pink); }
+        .text-neon-green { color: var(--neon-green); text-shadow: 0 0 10px var(--neon-green); }
+        .text-neon-blue { color: var(--neon-blue); text-shadow: 0 0 10px var(--neon-blue); }
+        .text-neon-amber { color: var(--neon-amber); text-shadow: 0 0 10px var(--neon-amber); }
+        
+        .top-nav { margin-bottom: 40px; display: flex; justify-content: space-between; align-items: center; }
+        .btn-return { color: #fff; text-decoration: none; border: 1px solid var(--neon-blue); padding: 8px 20px; font-weight: bold; transition: 0.3s; background: rgba(0,243,255,0.1); }
+        .btn-return:hover { background: var(--neon-blue); color: #000; box-shadow: 0 0 20px var(--neon-blue); }
+    </style>
+</head>
+<body>
+
+<div class="cyber-grid"></div>
+<div class="scanlines"></div>
+
+<div class="container">
+    <div class="top-nav">
+        <div>
+            <div class="page-title">NEURO-NET</div>
+            <div style="color: #888; font-family: 'JetBrains Mono'; letter-spacing: 2px; margin-top: 5px;">
+                > AGENT_IDENT: <span style="color: #fff;">{{ email }}</span>
+            </div>
+        </div>
+        <a href="/architecture" class="btn-return">◀ RETURN TO ARCHITECTURE</a>
+    </div>
+
+    <div class="row g-4 mb-4">
+        
+        <div class="col-lg-6" style="animation-delay: 0.1s;">
+            <div class="holo-card h-100">
+                <div class="card-header-cyber">
+                    <span>AUTH KEY DIAGNOSTICS</span>
+                    <span style="font-size: 0.8rem; color: #888;">MODULE 01</span>
+                </div>
+                
+                <div class="row align-items-center mb-4">
+                    <div class="col-md-5 text-center">
+                        <div class="score-container">
+                            <svg class="score-ring">
+                                <circle class="score-circle-bg" cx="75" cy="75" r="60"></circle>
+                                <circle class="score-circle" id="score-circle-path" cx="75" cy="75" r="60" stroke-dasharray="377" stroke-dashoffset="377" 
+                                    stroke="{% if pwd_score > 70 %}#00ff9d{% elif pwd_score > 40 %}#00f3ff{% else %}#ff0055{% endif %}">
+                                </circle>
+                            </svg>
+                            <div class="score-text">
+                                <span id="score-counter">0</span><span style="font-size:1rem; color:#888;">%</span>
+                            </div>
+                        </div>
+                        <div class="mt-2" style="font-family: 'JetBrains Mono'; font-weight: bold;">
+                            <span class="{% if pwd_score > 70 %}text-neon-green{% elif pwd_score > 40 %}text-neon-blue{% else %}text-neon-pink{% endif %}">
+                                [{{ pwd_verdict }}]
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-7">
+                        <div style="color: #aaa; font-family: 'JetBrains Mono'; font-size: 0.85rem; margin-bottom: 10px;">
+                            > EST. BRUTE FORCE TIME: <br>
+                            <span class="{% if pwd_score > 70 %}text-neon-green{% else %}text-neon-pink{% endif %}" style="font-size: 1.2rem; font-weight: bold;">{{ pwd_crack_time }}</span>
+                        </div>
+                        
+                        <div style="color: #aaa; font-family: 'JetBrains Mono'; font-size: 0.85rem;">
+                            > PUBLIC DATA LEAKS: <br>
+                            {% if pwd_leaks > 0 %}
+                                <span class="text-neon-pink" style="font-size: 1.2rem; font-weight: bold;">FOUND {{ pwd_leaks }} TIMES</span>
+                            {% else %}
+                                <span class="text-neon-green" style="font-size: 1.2rem; font-weight: bold;">ZERO (SECURE)</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <div style="color: #888; font-size: 0.8rem; letter-spacing: 2px; margin-bottom: 10px;">VULNERABILITY MATRIX</div>
+                    <div class="diag-grid">
+                        <div class="diag-item {% if pwd_analytics.get('length', 0) >= 12 %}pass{% else %}fail{% endif %}">
+                            <span style="color: {% if pwd_analytics.get('length', 0) >= 12 %}var(--neon-green){% else %}var(--neon-pink){% endif %};">[{% if pwd_analytics.get('length', 0) >= 12 %}✓{% else %}X{% endif %}]</span> Length (12+)
+                        </div>
+                        <div class="diag-item {% if pwd_analytics.get('has_upper') %}pass{% else %}fail{% endif %}">
+                            <span style="color: {% if pwd_analytics.get('has_upper') %}var(--neon-green){% else %}var(--neon-pink){% endif %};">[{% if pwd_analytics.get('has_upper') %}✓{% else %}X{% endif %}]</span> Uppercase
+                        </div>
+                        <div class="diag-item {% if pwd_analytics.get('has_lower') %}pass{% else %}fail{% endif %}">
+                            <span style="color: {% if pwd_analytics.get('has_lower') %}var(--neon-green){% else %}var(--neon-pink){% endif %};">[{% if pwd_analytics.get('has_lower') %}✓{% else %}X{% endif %}]</span> Lowercase
+                        </div>
+                        <div class="diag-item {% if pwd_analytics.get('has_digit') %}pass{% else %}fail{% endif %}">
+                            <span style="color: {% if pwd_analytics.get('has_digit') %}var(--neon-green){% else %}var(--neon-pink){% endif %};">[{% if pwd_analytics.get('has_digit') %}✓{% else %}X{% endif %}]</span> Numbers
+                        </div>
+                        <div class="diag-item {% if pwd_analytics.get('has_symbol') %}pass{% else %}fail{% endif %}">
+                            <span style="color: {% if pwd_analytics.get('has_symbol') %}var(--neon-green){% else %}var(--neon-pink){% endif %};">[{% if pwd_analytics.get('has_symbol') %}✓{% else %}X{% endif %}]</span> Symbols
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <div style="color: #888; font-size: 0.8rem; letter-spacing: 2px; margin-bottom: 8px;">> AI SECURE REPLACEMENT</div>
+                    <div class="terminal-block">
+                        {{ pwd_suggestion }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6" style="animation-delay: 0.2s;">
+            <div class="holo-card h-100">
+                <div class="card-header-cyber">
+                    <span>DARK WEB EXPOSURE REPORT</span>
+                    <span style="font-size: 0.8rem; color: #888;">DEEP SCAN</span>
+                </div>
+
+                <div style="font-family: 'JetBrains Mono'; font-size: 0.9rem; color: #ccc; margin-bottom: 20px;">
+                    > INITIATING CROSS-REFERENCE WITH KNOWN BREACH DATABASES...<br>
+                    > TARGET COMPROMISE STATUS:
+                </div>
+
+                <div style="max-height: 380px; overflow-y: auto; padding-right: 10px;">
+                    {% if breaches and breaches|length > 0 %}
+                        <div class="breach-alert text-center mb-4">
+                            <h5 style="color: var(--neon-pink); margin: 0; font-weight: bold; letter-spacing: 2px;">
+                                ⚠️ CRITICAL ALERT: {{ breaches|length }} EXPOSURE EVENTS DETECTED
+                            </h5>
+                        </div>
+                        
+                        {% for breach in breaches %}
+                        <div style="background: rgba(0,0,0,0.5); border-left: 2px solid var(--neon-pink); padding: 12px; margin-bottom: 10px; font-family: 'JetBrains Mono';">
+                            <div class="d-flex justify-content-between">
+                                <strong style="color: var(--neon-blue);">{{ breach.Name }}</strong>
+                                <span style="color: #888; font-size: 0.8rem;">{{ breach.BreachDate }}</span>
+                            </div>
+                            <div style="color: #aaa; font-size: 0.85rem; margin-top: 5px;">
+                                COMPROMISED DATA: <span style="color: #fff;">{{ breach.DataClasses|join(', ') }}</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="breach-clean">
+                            <h4 style="margin: 0; letter-spacing: 2px;">✓ ALL CLEAR</h4>
+                            <p style="margin-top: 10px; font-family: 'JetBrains Mono'; font-size: 0.9rem;">No compromised credentials found in public databases or text dumps.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-lg-5" style="animation-delay: 0.3s;">
+            <div class="holo-card h-100" style="border-color: rgba(188, 19, 254, 0.3);">
+                <div class="card-header-cyber" style="color: var(--neon-purple);">
+                    <span>LIVE OSINT FOOTPRINT</span>
+                    <span style="font-size: 0.8rem; color: #888;">TRACEROUTE</span>
+                </div>
+                
+                <ul class="list-unstyled" style="font-family: 'JetBrains Mono'; font-size: 0.9rem;">
+                    <li class="mb-3">
+                        <span style="color: #888;">> CURRENT IPv4/IPv6:</span><br>
+                        <strong class="text-neon-blue">{{ user_ip }}</strong>
+                    </li>
+                    <li class="mb-3">
+                        <span style="color: #888;">> USER-AGENT STRING:</span><br>
+                        <span style="color: #ccc; word-wrap: break-word;">{{ user_agent }}</span>
+                    </li>
+                    <li class="mb-3">
+                        <span style="color: #888;">> EMAIL DOMAIN RISK:</span><br>
+                        <span class="{% if osint_risk == 'HIGH' %}text-neon-amber{% else %}text-neon-green{% endif %}" style="font-weight: bold; font-size: 1.1rem;">[{{ osint_risk }}]</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="col-lg-7" style="animation-delay: 0.4s;">
+            <div class="holo-card h-100" style="border-color: rgba(0, 255, 157, 0.3);">
+                <div class="card-header-cyber" style="color: var(--neon-green);">
+                    <span>INTERNAL AUDIT LOG</span>
+                    <span style="font-size: 0.8rem; color: #888;">LAST 5 ACTIONS</span>
+                </div>
+
+                <div style="font-family: 'JetBrains Mono'; font-size: 0.85rem;">
+                    {% if recent_logs %}
+                        <table style="width: 100%; color: #ccc;">
+                            {% for log in recent_logs %}
+                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                <td style="padding: 10px 0; color: #888;">{{ log.timestamp.split('.')[0] if '.' in log.timestamp else log.timestamp }}</td>
+                                <td style="padding: 10px 0; text-align: right; color: var(--neon-green);">{{ log.action }}</td>
+                            </tr>
+                            {% endfor %}
+                        </table>
+                    {% else %}
+                        <div style="color: #888; text-align: center; padding: 20px;">> NO RECENT AUDIT LOGS FOUND FOR THIS IDENT.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-12" style="animation-delay: 0.5s;">
+            <div class="holo-card">
+                <div class="card-header-cyber mb-4" style="color: #fff;">
+                    <span>GLOBAL THREAT VECTORS & SAFEGUARDS</span>
+                    <span style="font-size: 0.8rem; color: #888;">HOVER TO DECRYPT DEFENSE</span>
+                </div>
+                
+                <div class="row g-4">
+                    {% for crime in cybercrimes %}
+                    <div class="col-md-4">
+                        <div class="intel-card">
+                            <div style="color: var(--neon-blue); font-size: 1.5rem; margin-bottom: 10px;">🛡️</div>
+                            <h5 style="color: #fff; letter-spacing: 1px; font-weight: bold;">{{ crime.name }}</h5>
+                            <p style="color: #aaa; font-size: 0.9rem; font-family: 'JetBrains Mono';">{{ crime.desc }}</p>
+                            
+                            <div class="intel-defense">
+                                <h6 style="color: var(--neon-blue); font-family: 'JetBrains Mono'; margin-bottom: 10px;">> COUNTERMEASURE_ACTIVATED</h6>
+                                <p style="color: #fff; font-size: 0.95rem;">{{ crime.safeguard }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const targetScore = parseInt("{{ pwd_score }}") || 0;
+        const circle = document.getElementById('score-circle-path');
+        const counterElement = document.getElementById('score-counter');
+        
+        // 377 is approx circumference of r=60
+        const totalLength = 377;
+        const offset = totalLength - (targetScore / 100) * totalLength;
+        
+        setTimeout(() => { circle.style.strokeDashoffset = offset; }, 500);
+
+        let currentScore = 0;
+        const duration = 2000;
+        const interval = 20; 
+        const step = targetScore / (duration / interval);
+
+        if(targetScore > 0) {
+            const counterInterval = setInterval(() => {
+                currentScore += step;
+                if(currentScore >= targetScore) {
+                    currentScore = targetScore;
+                    clearInterval(counterInterval);
+                }
+                counterElement.innerText = Math.floor(currentScore);
+            }, interval);
+        }
+    });
+</script>
+
+</body>
+</html>

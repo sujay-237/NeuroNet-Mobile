@@ -11,7 +11,6 @@ import hashlib
 import string
 import secrets
 import xml.etree.ElementTree as ET
-import tempfile
 from collections import Counter
 from supabase import create_client, Client 
 from pymongo import MongoClient
@@ -361,6 +360,20 @@ def handle_login():
                         
                         session['role'] = 'user'
                         session['user'] = payload
+                        
+                        # --- Process and store full password analytics ---
+                        pwd_analysis = analyze_password_strength(password)
+                        session['pwd_score'] = pwd_analysis.get('score', 0)
+                        session['pwd_verdict'] = pwd_analysis.get('verdict', 'UNKNOWN')
+                        session['pwd_crack_time'] = pwd_analysis.get('crack_time', 'UNKNOWN')
+                        session['pwd_leaks'] = pwd_analysis.get('leaks', 0)
+                        session['pwd_analytics'] = pwd_analysis.get('analytics', {})
+                        
+                        # Generate a cryptographically strong suggestion
+                        alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
+                        session['pwd_suggestion'] = ''.join(secrets.choice(alphabet) for _ in range(16))
+                        # -------------------------------------------------------------------------
+                        
                         log_activity(payload, "Logged In")
                         return jsonify({"status": "success", "redirect": "/architecture"})
             except Exception as e:
@@ -614,9 +627,9 @@ def stego():
     mode = "encode"
     show_download = False
     download_type = "image"
+    base_dir = os.path.abspath(os.path.dirname(__file__))
+    static_dir = os.path.join(base_dir, 'static')
     
-    # Use the system's temporary directory instead of the static folder
-    temp_dir = tempfile.gettempdir()
     current_user = session.get('user', 'Unknown User')
     
     if request.method == 'POST':
@@ -631,8 +644,7 @@ def stego():
                     message = "Error: No secret text provided."
                 else:
                     if stego_type == 'image':
-                        # Save to /tmp
-                        filepath = os.path.join(temp_dir, 'stego_result.png')
+                        filepath = os.path.join(static_dir, 'stego_result.png')
                         file.save(filepath)
                         success, msg = stego_engine.encode(filepath, text, filepath)
                         message = msg
@@ -643,8 +655,8 @@ def stego():
                             
                     elif stego_type == 'audio':
                         ext = '.mp3' if file.filename.lower().endswith('.mp3') else '.wav'
-                        filepath = os.path.join(temp_dir, f'stego_audio_input{ext}')
-                        outpath = os.path.join(temp_dir, 'stego_audio_result.wav') 
+                        filepath = os.path.join(static_dir, f'stego_audio_input{ext}')
+                        outpath = os.path.join(static_dir, 'stego_audio_result.wav') 
                         
                         file.save(filepath)
                         success, msg = stego_engine.encode_audio(filepath, text, outpath)
@@ -656,14 +668,14 @@ def stego():
                             
             elif mode == 'decode':
                 if stego_type == 'image':
-                    filepath = os.path.join(temp_dir, 'stego_upload.png')
+                    filepath = os.path.join(static_dir, 'stego_upload.png')
                     file.save(filepath)
                     message = stego_engine.decode(filepath)
                     log_activity(current_user, "Stego Drive: Extracted Image Payload")
                     
                 elif stego_type == 'audio':
                     ext = '.mp3' if file.filename.lower().endswith('.mp3') else '.wav'
-                    filepath = os.path.join(temp_dir, f'stego_audio_upload{ext}')
+                    filepath = os.path.join(static_dir, f'stego_audio_upload{ext}')
                     file.save(filepath)
                     message = stego_engine.decode_audio(filepath)
                     log_activity(current_user, f"Stego Drive: Extracted Audio Payload ({ext.upper()})")
@@ -674,23 +686,13 @@ def stego():
 
 @main_bp.route('/download_stego')
 def download_stego():
-    temp_dir = tempfile.gettempdir()
-    filepath = os.path.join(temp_dir, 'stego_result.png')
-    
-    try: 
-        return send_file(filepath, as_attachment=True, download_name='encrypted_image.png')
-    except FileNotFoundError: 
-        return "File not found or expired.", 404
+    try: return send_file('app/static/stego_result.png', as_attachment=True, download_name='encrypted_image.png')
+    except FileNotFoundError: return send_file('static/stego_result.png', as_attachment=True, download_name='encrypted_image.png')
 
 @main_bp.route('/download_stego_audio')
 def download_stego_audio():
-    temp_dir = tempfile.gettempdir()
-    filepath = os.path.join(temp_dir, 'stego_audio_result.wav')
-    
-    try: 
-        return send_file(filepath, as_attachment=True, download_name='encrypted_audio.wav')
-    except FileNotFoundError: 
-        return "File not found or expired.", 404
+    try: return send_file('app/static/stego_audio_result.wav', as_attachment=True, download_name='encrypted_audio.wav')
+    except FileNotFoundError: return send_file('static/stego_audio_result.wav', as_attachment=True, download_name='encrypted_audio.wav')
 
 @main_bp.route('/sandbox', methods=['GET', 'POST'])
 def sandbox():
@@ -702,7 +704,7 @@ def sandbox():
     return render_template('sandbox.html', output=output, code=code)
 
 
-# --- NEW MODULE ROUTES (AI, Vault, Feed) ---
+# --- NEW MODULE ROUTES (AI, Vault, Feed, Security Profile) ---
 
 @main_bp.route('/password-ai', methods=['GET', 'POST'])
 def password_ai():
@@ -754,6 +756,79 @@ def profiler():
         text_input = request.form.get('bio_text', '')
         if text_input: profile = analyze_psychology(text_input)
     return render_template('profiler.html', profile=profile, text_input=text_input)
+
+# --- SECURITY PROFILE DASHBOARD ROUTE ---
+@main_bp.route('/security-profile')
+def security_profile():
+    if session.get('role') != 'user':
+        return redirect('/')
+    
+    email = session.get('user')
+    
+    # 1. OSINT Data Extraction
+    if request.headers.getlist("X-Forwarded-For"):
+        user_ip = request.headers.getlist("X-Forwarded-For")[0]
+    else:
+        user_ip = request.remote_addr
+        
+    user_agent = request.headers.get('User-Agent', 'Unknown Environment')
+    domain = email.split('@')[-1] if '@' in email else 'Unknown'
+    osint_risk = "HIGH" if domain in ['gmail.com', 'yahoo.com', 'hotmail.com'] else "MODERATE"
+    
+    # 2. Fetch Recent Logs from Supabase
+    recent_logs = []
+    if supabase is not None:
+        try:
+            response = supabase.table('user_activity').select('*').eq('email', email).order('timestamp', desc=True).limit(5).execute()
+            recent_logs = response.data
+        except Exception as e:
+            print(f"Failed to fetch logs: {e}")
+
+    # 3. Fetch Darkweb Report
+    breaches = search_breach_data(email)
+    
+    # 4. Retrieve Password Analytics from Session
+    pwd_score = session.get('pwd_score', 0)
+    pwd_verdict = session.get('pwd_verdict', 'UNKNOWN')
+    pwd_suggestion = session.get('pwd_suggestion', 'N/A')
+    pwd_crack_time = session.get('pwd_crack_time', 'UNKNOWN')
+    pwd_leaks = session.get('pwd_leaks', 0)
+    pwd_analytics = session.get('pwd_analytics', {})
+    
+    # 5. Define Common Cybercrimes & Safeguards
+    cybercrimes = [
+        {
+            "name": "Phishing & Spear Phishing", 
+            "desc": "Deceptive communications appearing to come from trusted sources to steal credentials.", 
+            "safeguard": "Never click unverified links. Inspect sender domains carefully and enforce Multi-Factor Authentication (MFA)."
+        },
+        {
+            "name": "Credential Stuffing", 
+            "desc": "Automated injections of breached username/password pairs to hijack accounts.", 
+            "safeguard": "Never reuse passwords across multiple services. Use a secure password manager and monitor data breaches."
+        },
+        {
+            "name": "Ransomware", 
+            "desc": "Malware that encrypts your local or network files until a ransom is paid.", 
+            "safeguard": "Maintain regular, encrypted offline backups and keep OS/Endpoint protection strictly updated."
+        }
+    ]
+    
+    return render_template('security_profile.html', 
+                           email=email, 
+                           user_ip=user_ip,
+                           user_agent=user_agent,
+                           osint_risk=osint_risk,
+                           recent_logs=recent_logs,
+                           breaches=breaches, 
+                           pwd_score=pwd_score, 
+                           pwd_verdict=pwd_verdict, 
+                           pwd_suggestion=pwd_suggestion,
+                           pwd_crack_time=pwd_crack_time,
+                           pwd_leaks=pwd_leaks,
+                           pwd_analytics=pwd_analytics,
+                           cybercrimes=cybercrimes)
+
 
 # --- MONGODB VAULT IMPLEMENTATION ---
 @main_bp.route('/vault', methods=['GET', 'POST'])

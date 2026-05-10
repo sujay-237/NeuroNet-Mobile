@@ -92,15 +92,20 @@
 
         .nav-dock {
             position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
-            background: rgba(10, 10, 10, 0.8); backdrop-filter: blur(10px);
-            padding: 10px 30px; border-radius: 50px; border: 1px solid rgba(255,255,255,0.1);
-            display: flex; gap: 20px; z-index: 100; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            background: rgba(10, 10, 10, 0.85); backdrop-filter: blur(12px);
+            padding: 10px 30px; border-radius: 50px; border: 1px solid rgba(0,243,255,0.2);
+            display: flex; gap: 30px; z-index: 100; box-shadow: 0 10px 40px rgba(0,0,0,0.8), inset 0 0 15px rgba(0,243,255,0.05);
+            align-items: center;
         }
         
-        .dock-btn { color: #aaa; font-size: 1.2rem; padding: 10px; transition: 0.3s; position: relative; }
-        .dock-btn:hover { color: #fff; transform: translateY(-5px); }
+        .dock-btn { color: #888; font-size: 1.4rem; padding: 8px; transition: 0.3s; position: relative; text-decoration: none; }
+        .dock-btn:hover { color: #fff; transform: translateY(-5px); text-shadow: 0 0 15px rgba(255,255,255,0.5); }
+        
+        .btn-profile { color: var(--neon-cyan); text-shadow: 0 0 10px rgba(0,243,255,0.4); }
+        .btn-profile:hover { color: #fff; text-shadow: 0 0 20px var(--neon-cyan); }
+        
         .btn-logout { color: var(--neon-pink); }
-        .btn-logout:hover { color: #ff5555; text-shadow: 0 0 10px var(--neon-pink); }
+        .btn-logout:hover { color: #fff; text-shadow: 0 0 20px var(--neon-pink); }
 
         /* --- MOBILE OPTIMIZATION --- */
         @media (max-width: 768px) {
@@ -111,7 +116,7 @@
             .card-icon { font-size: 2rem; margin-bottom: 10px; }
             .card-title { font-size: 1rem; }
             .card-sub { font-size: 0.7rem; }
-            .nav-dock { width: 90%; justify-content: center; bottom: 15px; padding: 10px 20px; }
+            .nav-dock { width: 90%; justify-content: space-around; gap: 10px; bottom: 15px; padding: 10px 20px; }
             .container { padding-bottom: 80px; }
         }
     </style>
@@ -261,8 +266,9 @@
     </div>
 
     <div class="nav-dock">
-        <a href="/python-info" class="dock-btn" title="SPECS"><i class="fab fa-python"></i></a>
-        <a href="/" class="dock-btn btn-logout" title="LOGOUT"><i class="fas fa-power-off"></i></a>
+        <a href="/python-info" class="dock-btn" title="SYSTEM SPECS"><i class="fab fa-python"></i></a>
+        <a href="/security-profile" class="dock-btn btn-profile" title="SECURITY PROFILE"><i class="fas fa-shield-alt"></i></a>
+        <a href="/logout" class="dock-btn btn-logout" title="TERMINATE SESSION"><i class="fas fa-power-off"></i></a>
     </div>
 
 </div>

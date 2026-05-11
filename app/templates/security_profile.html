@@ -28,6 +28,151 @@
             padding: 40px 20px;
         }
 
+        /* --- 3D WATER SHIELD ANIMATION OVERLAY --- */
+        #intro-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: var(--bg-dark);
+            z-index: 99999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            perspective: 1200px;
+            transition: opacity 0.8s ease, visibility 0.8s ease;
+        }
+
+        .shield-scene {
+            position: absolute;
+            width: 100vw; height: 100vh;
+            display: flex; align-items: center; justify-content: center;
+            z-index: 1;
+        }
+
+        .shield-assembly {
+            position: relative;
+            width: 240px; height: 320px;
+            transform-style: preserve-3d;
+            transform: translateZ(-1500px) rotateY(1080deg) rotateX(60deg);
+            animation: 
+                shieldEntrance 2.5s cubic-bezier(0.16, 1, 0.3, 1) forwards,
+                shieldFloat 3s ease-in-out infinite 2.5s;
+        }
+
+        .shield-assembly.explode {
+            animation: dissolveShield 0.8s cubic-bezier(0.5, 0, 0.2, 1) forwards;
+        }
+
+        @keyframes shieldEntrance {
+            100% { transform: translateZ(0px) rotateY(0deg) rotateX(0deg); }
+        }
+
+        @keyframes shieldFloat {
+            0%, 100% { transform: translateY(0px) rotateY(0deg) rotateX(0deg); }
+            50% { transform: translateY(-15px) rotateY(5deg) rotateX(-5deg); }
+        }
+
+        @keyframes dissolveShield {
+            0% { transform: translateZ(0px) scale(1); opacity: 1; filter: blur(0); }
+            100% { transform: translateZ(600px) scale(3); opacity: 0; filter: blur(20px); }
+        }
+
+        .shield-3d-layer {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            /* Perfect shield shape */
+            border-radius: 5% 5% 50% 50% / 5% 5% 90% 90%;
+            border: 2px solid rgba(255, 255, 255, 0.35); /* Specular edge for realism */
+            background: linear-gradient(135deg, rgba(10, 80, 200, 0.15), rgba(0, 200, 255, 0.25));
+            backdrop-filter: blur(8px) brightness(1.15); /* Refraction effect */
+            overflow: hidden;
+            box-shadow: 0 0 25px rgba(0, 100, 255, 0.3), inset 0 0 35px rgba(0, 120, 255, 0.5), inset 0 0 15px rgba(255, 255, 255, 0.5);
+            transform-style: preserve-3d;
+        }
+
+        /* Swirling Liquid / Water Effect inside the 3D layers */
+        .shield-3d-layer::before {
+            content: '';
+            position: absolute;
+            top: 120%; left: -50%;
+            width: 200%; height: 200%;
+            background: radial-gradient(circle at center, rgba(0, 180, 255, 0.7) 0%, rgba(0, 60, 200, 0.5) 40%, transparent 70%);
+            /* Blobby water shape */
+            border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+            animation: fillWater 2s ease-out forwards 1s, liquidSpin 4s linear infinite;
+        }
+
+        @keyframes fillWater {
+            to { top: -30%; }
+        }
+        @keyframes liquidSpin {
+            100% { transform: rotate(360deg); }
+        }
+
+        /* 3D Depth Separations with Realistic Ocean/Water Tints */
+        .layer-back  { transform: translateZ(-45px) scale(0.9); border-color: rgba(0, 50, 150, 0.3); background: rgba(0, 20, 80, 0.4); }
+        .layer-mid2  { transform: translateZ(-20px) scale(0.95); border-color: rgba(0, 100, 200, 0.4); }
+        .layer-mid   { transform: translateZ(0px) scale(1); border-color: rgba(0, 180, 255, 0.5); }
+        .layer-front { transform: translateZ(25px) scale(1.05); border-color: rgba(255, 255, 255, 0.7); box-shadow: 0 0 40px rgba(0, 150, 255, 0.3), inset 0 0 25px rgba(255, 255, 255, 0.7); }
+
+        .water-core {
+            position: absolute;
+            top: 30%; left: 30%; width: 40%; height: 40%;
+            background: #e0f7fa;
+            border-radius: 50%;
+            filter: blur(25px);
+            transform: translateZ(10px);
+            animation: pulseCore 1.5s infinite alternate;
+        }
+        @keyframes pulseCore {
+            0% { transform: translateZ(10px) scale(0.8); opacity: 0.6; }
+            100% { transform: translateZ(10px) scale(1.2); opacity: 0.9; }
+        }
+
+        .intro-text-container {
+            position: absolute;
+            z-index: 100000;
+            text-align: center;
+            transform: translateZ(150px);
+            pointer-events: none;
+        }
+
+        .intro-text {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 4rem;
+            font-weight: 900;
+            color: #ffffff;
+            letter-spacing: 12px;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.9), 0 0 40px rgba(0, 150, 255, 0.8), 0 10px 20px rgba(0, 0, 0, 0.8); /* Crisp glow + physical drop shadow */
+            opacity: 0;
+            transform: scale(0.8);
+            animation: textPop 2.5s forwards 1.2s;
+        }
+
+        .intro-subtext {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1rem;
+            color: #b3e5fc; /* Soft icy blue instead of neon green */
+            letter-spacing: 5px;
+            margin-top: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8), 0 0 15px rgba(0, 150, 255, 0.7);
+            opacity: 0;
+            animation: textPop 2.5s forwards 1.4s;
+        }
+
+        @keyframes textPop {
+            0% { opacity: 0; transform: scale(0.8) translateY(20px); filter: blur(10px); }
+            15% { opacity: 1; transform: scale(1) translateY(0); filter: blur(0px); }
+            85% { opacity: 1; transform: scale(1) translateY(0); filter: blur(0px); }
+            100% { opacity: 0; transform: scale(1.1) translateY(-20px); filter: blur(10px); }
+        }
+
+        @media (max-width: 768px) {
+            .intro-text { font-size: 2.2rem; letter-spacing: 5px; }
+            .intro-subtext { font-size: 0.8rem; }
+        }
+
         /* --- AMBIENT BACKGROUND FX --- */
         .cyber-grid {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -64,6 +209,8 @@
             position: relative; overflow: hidden;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), inset 0 0 20px rgba(0, 243, 255, 0.05);
             animation: slideUpFade 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+            /* Delay the entry of cards until intro finishes */
+            animation-delay: 4.2s !important;
         }
         .holo-card::before {
             content: ''; position: absolute; top: 0; left: -100%;
@@ -137,12 +284,29 @@
         .text-neon-blue { color: var(--neon-blue); text-shadow: 0 0 10px var(--neon-blue); }
         .text-neon-amber { color: var(--neon-amber); text-shadow: 0 0 10px var(--neon-amber); }
         
-        .top-nav { margin-bottom: 40px; display: flex; justify-content: space-between; align-items: center; }
+        .top-nav { margin-bottom: 40px; display: flex; justify-content: space-between; align-items: center; opacity: 0; animation: slideUpFade 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards 4s; }
         .btn-return { color: #fff; text-decoration: none; border: 1px solid var(--neon-blue); padding: 8px 20px; font-weight: bold; transition: 0.3s; background: rgba(0,243,255,0.1); }
         .btn-return:hover { background: var(--neon-blue); color: #000; box-shadow: 0 0 20px var(--neon-blue); }
     </style>
 </head>
 <body>
+
+<!-- 3D WATER SHIELD INTRO ANIMATION OVERLAY -->
+<div id="intro-overlay">
+    <div class="shield-scene">
+        <div class="shield-assembly" id="shield-core">
+            <div class="shield-3d-layer layer-back"></div>
+            <div class="shield-3d-layer layer-mid2"></div>
+            <div class="shield-3d-layer layer-mid"></div>
+            <div class="shield-3d-layer layer-front"></div>
+            <div class="water-core"></div>
+        </div>
+    </div>
+    <div class="intro-text-container">
+        <div class="intro-text">SECURITY PROFILE</div>
+        <div class="intro-subtext">SYSTEM ANALYSIS COMPLETE</div>
+    </div>
+</div>
 
 <div class="cyber-grid"></div>
 <div class="scanlines"></div>
@@ -160,8 +324,8 @@
 
     <div class="row g-4 mb-4">
         
-        <div class="col-lg-6" style="animation-delay: 0.1s;">
-            <div class="holo-card h-100">
+        <div class="col-lg-6">
+            <div class="holo-card h-100" style="animation-delay: 4.2s !important;">
                 <div class="card-header-cyber">
                     <span>AUTH KEY DIAGNOSTICS</span>
                     <span style="font-size: 0.8rem; color: #888;">MODULE 01</span>
@@ -234,8 +398,8 @@
             </div>
         </div>
 
-        <div class="col-lg-6" style="animation-delay: 0.2s;">
-            <div class="holo-card h-100">
+        <div class="col-lg-6">
+            <div class="holo-card h-100" style="animation-delay: 4.3s !important;">
                 <div class="card-header-cyber">
                     <span>DARK WEB EXPOSURE REPORT</span>
                     <span style="font-size: 0.8rem; color: #888;">DEEP SCAN</span>
@@ -277,8 +441,8 @@
     </div>
 
     <div class="row g-4 mb-4">
-        <div class="col-lg-5" style="animation-delay: 0.3s;">
-            <div class="holo-card h-100" style="border-color: rgba(188, 19, 254, 0.3);">
+        <div class="col-lg-5">
+            <div class="holo-card h-100" style="border-color: rgba(188, 19, 254, 0.3); animation-delay: 4.4s !important;">
                 <div class="card-header-cyber" style="color: var(--neon-purple);">
                     <span>LIVE OSINT FOOTPRINT</span>
                     <span style="font-size: 0.8rem; color: #888;">TRACEROUTE</span>
@@ -301,8 +465,8 @@
             </div>
         </div>
 
-        <div class="col-lg-7" style="animation-delay: 0.4s;">
-            <div class="holo-card h-100" style="border-color: rgba(0, 255, 157, 0.3);">
+        <div class="col-lg-7">
+            <div class="holo-card h-100" style="border-color: rgba(0, 255, 157, 0.3); animation-delay: 4.5s !important;">
                 <div class="card-header-cyber" style="color: var(--neon-green);">
                     <span>INTERNAL AUDIT LOG</span>
                     <span style="font-size: 0.8rem; color: #888;">LAST 5 ACTIONS</span>
@@ -327,8 +491,8 @@
     </div>
 
     <div class="row g-4 mb-4">
-        <div class="col-12" style="animation-delay: 0.5s;">
-            <div class="holo-card">
+        <div class="col-12">
+            <div class="holo-card" style="animation-delay: 4.6s !important;">
                 <div class="card-header-cyber mb-4" style="color: #fff;">
                     <span>GLOBAL THREAT VECTORS & SAFEGUARDS</span>
                     <span style="font-size: 0.8rem; color: #888;">HOVER TO DECRYPT DEFENSE</span>
@@ -358,15 +522,36 @@
 
 <script>
     document.addEventListener("DOMContentLoaded", function() {
+        // Prevent scrolling during 3D intro animation
+        document.body.style.overflow = 'hidden';
+        
+        // Trigger the 3D shield explosion at 3.7 seconds
+        setTimeout(() => {
+            const shieldCore = document.getElementById('shield-core');
+            if (shieldCore) shieldCore.classList.add('explode');
+        }, 3700);
+
+        // Hide overlay and allow scrolling after explosion finishes
+        setTimeout(() => {
+            document.body.style.overflow = 'auto';
+            const overlay = document.getElementById('intro-overlay');
+            if (overlay) {
+                overlay.style.opacity = '0';
+                setTimeout(() => overlay.style.visibility = 'hidden', 800);
+            }
+        }, 4400);
+
+        // Dashboard Data Loading logic
         const targetScore = parseInt("{{ pwd_score }}") || 0;
         const circle = document.getElementById('score-circle-path');
         const counterElement = document.getElementById('score-counter');
         
-        // 377 is approx circumference of r=60
         const totalLength = 377;
         const offset = totalLength - (targetScore / 100) * totalLength;
         
-        setTimeout(() => { circle.style.strokeDashoffset = offset; }, 500);
+        setTimeout(() => { 
+            if (circle) circle.style.strokeDashoffset = offset; 
+        }, 4600);
 
         let currentScore = 0;
         const duration = 2000;
@@ -374,14 +559,16 @@
         const step = targetScore / (duration / interval);
 
         if(targetScore > 0) {
-            const counterInterval = setInterval(() => {
-                currentScore += step;
-                if(currentScore >= targetScore) {
-                    currentScore = targetScore;
-                    clearInterval(counterInterval);
-                }
-                counterElement.innerText = Math.floor(currentScore);
-            }, interval);
+            setTimeout(() => {
+                const counterInterval = setInterval(() => {
+                    currentScore += step;
+                    if(currentScore >= targetScore) {
+                        currentScore = targetScore;
+                        clearInterval(counterInterval);
+                    }
+                    if (counterElement) counterElement.innerText = Math.floor(currentScore);
+                }, interval);
+            }, 4600);
         }
     });
 </script>

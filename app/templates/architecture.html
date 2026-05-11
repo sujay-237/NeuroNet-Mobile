@@ -15,7 +15,7 @@
             --neon-pink: #ff0055;
             --neon-amber: #ffb000;
             --neon-green: #00ff9d;
-            --bg-void: #050505;
+            --bg-void: #020205;
         }
 
         body {
@@ -23,311 +23,461 @@
             color: #fff;
             font-family: 'Rajdhani', sans-serif;
             overflow-x: hidden;
-            min-height: 100vh;
             margin: 0;
+            /* Extra height to allow smooth scrolling through the sections */
+            height: 450vh; 
         }
 
+        /* --- ADVANCED FLUID CANVAS --- */
         #neural-canvas {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: -1; opacity: 0.6;
+            z-index: -1; mix-blend-mode: screen; pointer-events: none;
         }
 
-        .header-section {
-            text-align: center; padding: 80px 0 40px;
-            position: relative; z-index: 2;
+        .ambient-glow {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at 50% 50%, rgba(188, 19, 254, 0.05), transparent 70%);
+            z-index: -2; pointer-events: none;
         }
-        
+
+        /* --- 3D DIAGONAL WHEEL CONTAINER --- */
+        .wheel-container {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            perspective: 2500px; /* Deepened perspective */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transform-style: preserve-3d;
+            z-index: 10;
+            pointer-events: none; /* Let clicks pass through container */
+        }
+
+        .wheel-section {
+            position: absolute;
+            width: 90%;
+            max-width: 1300px;
+            transform-origin: center center;
+            will-change: transform, opacity, z-index, visibility;
+            opacity: 0;
+            visibility: hidden;
+            /* Container passes clicks through, but the active section catches them */
+            pointer-events: none; 
+        }
+
+        /* --- HEADER STYLES --- */
+        .header-section { text-align: center; }
         .main-title {
-            font-family: 'Orbitron', sans-serif; font-size: 4.5rem; font-weight: 900;
-            color: #fff; letter-spacing: 10px; position: relative; display: inline-block;
-            text-shadow: 0 0 20px var(--neon-cyan);
+            font-family: 'Orbitron', sans-serif; font-size: 5rem; font-weight: 900;
+            color: #fff; letter-spacing: 15px; position: relative; display: inline-block;
+            text-shadow: 0 0 20px rgba(0, 243, 255, 0.5); margin-bottom: 0;
         }
-        
-        .main-title::before {
+        .main-title::before, .main-title::after {
             content: "NEURO-NET"; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            color: var(--neon-pink); z-index: -1; opacity: 0.7;
-            animation: glitch-anim-1 2.5s infinite linear alternate-reverse;
+            z-index: -1; opacity: 0.8; mix-blend-mode: screen;
         }
-        
-        @keyframes glitch-anim-1 {
-            0% { clip-path: inset(20% 0 80% 0); transform: translate(-2px, 2px); }
-            20% { clip-path: inset(60% 0 10% 0); transform: translate(2px, -2px); }
-            40% { clip-path: inset(40% 0 50% 0); transform: translate(-2px, 2px); }
-            60% { clip-path: inset(80% 0 5% 0); transform: translate(2px, -2px); }
-            80% { clip-path: inset(10% 0 70% 0); transform: translate(-2px, 2px); }
-            100% { clip-path: inset(30% 0 20% 0); transform: translate(2px, -2px); }
-        }
+        .main-title::before { color: var(--neon-cyan); animation: glitch-anim-1 3s infinite linear alternate-reverse; }
+        .main-title::after { color: var(--neon-purple); animation: glitch-anim-2 4s infinite linear alternate-reverse; }
 
         .sub-tagline {
-            font-family: 'JetBrains Mono'; color: var(--neon-cyan); letter-spacing: 3px;
-            font-size: 0.9rem; margin-top: 10px; opacity: 0.8;
+            font-family: 'JetBrains Mono'; color: rgba(255,255,255,0.7); letter-spacing: 8px;
+            font-size: 1rem; margin-top: 15px; text-transform: uppercase;
         }
 
-        .section-separator { display: flex; align-items: center; justify-content: center; margin: 60px 0 40px; }
-        .line { height: 1px; width: 100px; background: linear-gradient(90deg, transparent, var(--neon-purple)); }
-        .line.rev { background: linear-gradient(90deg, var(--neon-purple), transparent); }
-        .sec-title { padding: 0 20px; font-family: 'Orbitron'; font-size: 1.2rem; color: var(--neon-purple); letter-spacing: 2px; text-shadow: 0 0 10px var(--neon-purple); }
+        /* --- SECTION SEPARATORS --- */
+        .section-separator { display: flex; align-items: center; justify-content: center; margin-bottom: 40px; }
+        .line { height: 1px; width: 20vw; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3)); }
+        .line.rev { background: linear-gradient(90deg, rgba(255,255,255,0.3), transparent); }
+        .sec-title { padding: 0 30px; font-family: 'Orbitron'; font-size: 1.1rem; color: #fff; letter-spacing: 5px; opacity: 0.8;}
 
-        .card-container { perspective: 1000px; margin-bottom: 30px; }
+        /* --- ENHANCED 3D COLORED HOLO-CARDS --- */
+        .card-container { perspective: 1200px; margin-bottom: 30px; }
         
         .holo-card {
-            background: rgba(255, 255, 255, 0.02);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 15px; padding: 30px;
+            backdrop-filter: blur(20px);
+            border-radius: 16px; padding: 45px 20px;
             text-align: center; height: 100%;
-            transition: transform 0.1s, box-shadow 0.3s, border-color 0.3s;
-            transform-style: preserve-3d;
-            position: relative; overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            transform-style: preserve-3d; position: relative; overflow: hidden;
             cursor: pointer; text-decoration: none; display: block; color: inherit;
         }
         
-        .holo-card:hover { border-color: var(--neon-cyan); box-shadow: 0 0 30px rgba(0, 243, 255, 0.2); }
-        .holo-content { transform: translateZ(20px); }
-        
-        .card-icon { font-size: 3rem; margin-bottom: 20px; color: #fff; transition: 0.3s; text-shadow: 0 0 15px rgba(255,255,255,0.3); }
-        .holo-card:hover .card-icon { color: var(--neon-cyan); transform: scale(1.1) translateZ(30px); text-shadow: 0 0 25px var(--neon-cyan); }
-        .card-title { font-family: 'Orbitron'; font-size: 1.2rem; margin-bottom: 5px; color: #fff; }
-        .card-sub { font-family: 'JetBrains Mono'; font-size: 0.8rem; color: #aaa; }
-
-        .nav-dock {
-            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
-            background: rgba(10, 10, 10, 0.85); backdrop-filter: blur(12px);
-            padding: 10px 30px; border-radius: 50px; border: 1px solid rgba(0,243,255,0.2);
-            display: flex; gap: 30px; z-index: 100; box-shadow: 0 10px 40px rgba(0,0,0,0.8), inset 0 0 15px rgba(0,243,255,0.05);
-            align-items: center;
+        .holo-card::after {
+            content: ''; position: absolute; top: 0; left: 0; width: 200%; height: 200%;
+            background: linear-gradient(115deg, transparent 20%, rgba(255,255,255,0.1) 40%, rgba(255,255,255,0.2) 50%, transparent 60%);
+            transform: translate(-100%, -100%); pointer-events: none; mix-blend-mode: overlay;
         }
         
-        .dock-btn { color: #888; font-size: 1.4rem; padding: 8px; transition: 0.3s; position: relative; text-decoration: none; }
-        .dock-btn:hover { color: #fff; transform: translateY(-5px); text-shadow: 0 0 15px rgba(255,255,255,0.5); }
+        .holo-content { transform: translateZ(40px); transition: 0.4s cubic-bezier(0.16, 1, 0.3, 1); pointer-events: none; }
         
-        .btn-profile { color: var(--neon-cyan); text-shadow: 0 0 10px rgba(0,243,255,0.4); }
-        .btn-profile:hover { color: #fff; text-shadow: 0 0 20px var(--neon-cyan); }
+        .card-icon { font-size: 3.5rem; margin-bottom: 25px; transition: 0.5s cubic-bezier(0.16, 1, 0.3, 1); opacity: 0.85; }
+        .holo-card:hover .card-icon { transform: scale(1.2) translateZ(80px); opacity: 1; }
         
-        .btn-logout { color: var(--neon-pink); }
-        .btn-logout:hover { color: #fff; text-shadow: 0 0 20px var(--neon-pink); }
+        .card-title { font-family: 'Orbitron'; font-size: 1.2rem; margin-bottom: 8px; color: #fff; letter-spacing: 2px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        .card-sub { font-family: 'JetBrains Mono'; font-size: 0.75rem; color: rgba(255,255,255,0.7); letter-spacing: 1px; }
+
+        /* BASE COLORS & TINTS */
+        .card-encrypt { background: linear-gradient(145deg, rgba(0, 243, 255, 0.05), rgba(0, 243, 255, 0.15)); border: 1px solid rgba(0, 243, 255, 0.3); box-shadow: inset 0 0 20px rgba(0, 243, 255, 0.05); }
+        .card-encrypt .card-icon { color: var(--neon-cyan); }
+        
+        .card-decrypt { background: linear-gradient(145deg, rgba(188, 19, 254, 0.05), rgba(188, 19, 254, 0.15)); border: 1px solid rgba(188, 19, 254, 0.3); box-shadow: inset 0 0 20px rgba(188, 19, 254, 0.05); }
+        .card-decrypt .card-icon { color: var(--neon-purple); }
+        
+        .card-vault { background: linear-gradient(145deg, rgba(0, 255, 157, 0.05), rgba(0, 255, 157, 0.15)); border: 1px solid rgba(0, 255, 157, 0.3); box-shadow: inset 0 0 20px rgba(0, 255, 157, 0.05); }
+        .card-vault .card-icon { color: var(--neon-green); }
+        
+        .card-stego { background: linear-gradient(145deg, rgba(255, 0, 85, 0.05), rgba(255, 0, 85, 0.15)); border: 1px solid rgba(255, 0, 85, 0.3); box-shadow: inset 0 0 20px rgba(255, 0, 85, 0.05); }
+        .card-stego .card-icon { color: var(--neon-pink); }
+        
+        .card-intel { background: linear-gradient(145deg, rgba(255, 176, 0, 0.05), rgba(255, 176, 0, 0.15)); border: 1px solid rgba(255, 176, 0, 0.3); box-shadow: inset 0 0 20px rgba(255, 176, 0, 0.05); }
+        .card-intel .card-icon { color: var(--neon-amber); }
+
+        /* BRIGHT HOVER STATES */
+        .card-encrypt:hover { background: linear-gradient(145deg, rgba(0, 243, 255, 0.1), rgba(0, 243, 255, 0.25)); border-color: var(--neon-cyan); box-shadow: 0 20px 60px rgba(0, 243, 255, 0.2); }
+        .card-encrypt:hover .card-icon { text-shadow: 0 0 40px var(--neon-cyan); }
+        
+        .card-decrypt:hover { background: linear-gradient(145deg, rgba(188, 19, 254, 0.1), rgba(188, 19, 254, 0.25)); border-color: var(--neon-purple); box-shadow: 0 20px 60px rgba(188, 19, 254, 0.2); }
+        .card-decrypt:hover .card-icon { text-shadow: 0 0 40px var(--neon-purple); }
+        
+        .card-vault:hover { background: linear-gradient(145deg, rgba(0, 255, 157, 0.1), rgba(0, 255, 157, 0.25)); border-color: var(--neon-green); box-shadow: 0 20px 60px rgba(0, 255, 157, 0.2); }
+        .card-vault:hover .card-icon { text-shadow: 0 0 40px var(--neon-green); }
+        
+        .card-stego:hover { background: linear-gradient(145deg, rgba(255, 0, 85, 0.1), rgba(255, 0, 85, 0.25)); border-color: var(--neon-pink); box-shadow: 0 20px 60px rgba(255, 0, 85, 0.2); }
+        .card-stego:hover .card-icon { text-shadow: 0 0 40px var(--neon-pink); }
+        
+        .card-intel:hover { background: linear-gradient(145deg, rgba(255, 176, 0, 0.1), rgba(255, 176, 0, 0.25)); border-color: var(--neon-amber); box-shadow: 0 20px 60px rgba(255, 176, 0, 0.2); }
+        .card-intel:hover .card-icon { text-shadow: 0 0 40px var(--neon-amber); }
+
+        /* --- NAV DOCK --- */
+        .nav-dock {
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+            background: rgba(5, 5, 10, 0.75); backdrop-filter: blur(25px);
+            padding: 15px 45px; border-radius: 50px; border: 1px solid rgba(255,255,255,0.1);
+            display: flex; gap: 40px; z-index: 1000; box-shadow: 0 20px 40px rgba(0,0,0,0.8);
+            align-items: center; 
+            animation: fadeInDock 1s ease-out 0.5s forwards; opacity: 0;
+        }
+        
+        .dock-btn { color: rgba(255,255,255,0.5); font-size: 1.5rem; padding: 10px; transition: 0.3s; position: relative; text-decoration: none; z-index: 1001; }
+        .dock-btn:hover { color: #fff; transform: translateY(-10px) scale(1.1); text-shadow: 0 10px 20px rgba(255,255,255,0.5); }
+
+        @keyframes fadeInDock { to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+        @keyframes glitch-anim-1 { 0% { clip-path: inset(20% 0 80% 0); transform: translate(-3px, 2px); } 100% { clip-path: inset(30% 0 20% 0); transform: translate(3px, -2px); } }
+        @keyframes glitch-anim-2 { 0% { clip-path: inset(10% 0 60% 0); transform: translate(3px, -2px); } 100% { clip-path: inset(5% 0 80% 0); transform: translate(-3px, 2px); } }
 
         /* --- MOBILE OPTIMIZATION --- */
         @media (max-width: 768px) {
-            .header-section { padding: 40px 0 20px; }
-            .main-title { font-size: 2.2rem; letter-spacing: 5px; }
-            .sub-tagline { font-size: 0.75rem; }
-            .holo-card { padding: 15px 10px; }
-            .card-icon { font-size: 2rem; margin-bottom: 10px; }
+            .main-title { font-size: 2.8rem; letter-spacing: 5px; }
+            .holo-card { padding: 30px 15px; }
+            .card-icon { font-size: 2.5rem; margin-bottom: 15px; }
             .card-title { font-size: 1rem; }
-            .card-sub { font-size: 0.7rem; }
-            .nav-dock { width: 90%; justify-content: space-around; gap: 10px; bottom: 15px; padding: 10px 20px; }
-            .container { padding-bottom: 80px; }
+            .line { width: 10vw; }
+            .nav-dock { width: 90%; justify-content: space-between; gap: 0; bottom: 20px; padding: 15px 30px; }
         }
     </style>
 </head>
 <body>
 
+<div class="ambient-glow"></div>
 <canvas id="neural-canvas"></canvas>
 
-<div class="container" style="position: relative; z-index: 10;">
+<div class="wheel-container" id="wheel">
     
-    <div class="header-section">
+    <div class="wheel-section header-section">
         <h1 class="main-title">NEURO-NET</h1>
         <div class="sub-tagline">/// AI-DRIVEN INTRUSION PROFILING SYSTEM</div>
+        <p style="margin-top: 30px; color: rgba(255,255,255,0.4); font-size: 0.8rem; letter-spacing: 2px;">SCROLL TO INITIALIZE SYSTEM <br><i class="fas fa-chevron-down" style="margin-top:10px; animation: bounce 2s infinite;"></i></p>
     </div>
 
-    <div class="section-separator">
-        <div class="line"></div>
-        <div class="sec-title"><i class="fas fa-lock"></i> CRYPTOGRAPHIC CORE</div>
-        <div class="line rev"></div>
-    </div>
-
-    <div class="row">
-        <div class="col-md-3 col-6 card-container">
-            <a href="/encrypt" class="holo-card tilt-effect" style="border-color: rgba(0, 243, 255, 0.4);">
-                <div class="holo-content">
-                    <div class="card-icon" style="color: var(--neon-cyan); text-shadow: 0 0 15px var(--neon-cyan);"><i class="fas fa-file-code"></i></div>
-                    <div class="card-title">ENCRYPTOR</div>
-                    <div class="card-sub">XOR // SALTED</div>
-                </div>
-            </a>
+    <div class="wheel-section">
+        <div class="section-separator">
+            <div class="line"></div><div class="sec-title">CRYPTOGRAPHIC CORE</div><div class="line rev"></div>
         </div>
-        <div class="col-md-3 col-6 card-container">
-            <a href="/decrypt" class="holo-card tilt-effect" style="border-color: rgba(188, 19, 254, 0.4);">
-                <div class="holo-content">
-                    <div class="card-icon" style="color: var(--neon-purple); text-shadow: 0 0 15px var(--neon-purple);"><i class="fas fa-key"></i></div>
-                    <div class="card-title">DECRYPTOR</div>
-                    <div class="card-sub">HASH VALIDATION</div>
-                </div>
-            </a>
-        </div>
-        <div class="col-md-3 col-6 card-container">
-            <a href="/vault" class="holo-card tilt-effect" style="border-color: rgba(0, 255, 157, 0.4);">
-                <div class="holo-content">
-                    <div class="card-icon" style="color: var(--neon-green); text-shadow: 0 0 15px var(--neon-green);">
-                        <i class="fas fa-database"></i>
+        <div class="row">
+            <div class="col-md-3 col-6 card-container">
+                <a href="/encrypt" class="holo-card tilt-effect card-encrypt">
+                    <div class="holo-content">
+                        <div class="card-icon"><i class="fas fa-file-code"></i></div>
+                        <div class="card-title">ENCRYPTOR</div>
+                        <div class="card-sub">XOR MUTATION</div>
                     </div>
-                    <div class="card-title">SECURE VAULT</div>
-                    <div class="card-sub">ENCRYPT STORAGE</div>
-                </div>
-            </a>
-        </div>
-        <div class="col-md-3 col-6 card-container">
-            <a href="/stego" class="holo-card tilt-effect" style="border-color: rgba(255, 0, 85, 0.3);">
-                <div class="holo-content">
-                    <div class="card-icon" style="color: var(--neon-pink); text-shadow: 0 0 15px var(--neon-pink);">
-                        <i class="fas fa-image"></i>
+                </a>
+            </div>
+            <div class="col-md-3 col-6 card-container">
+                <a href="/decrypt" class="holo-card tilt-effect card-decrypt">
+                    <div class="holo-content">
+                        <div class="card-icon"><i class="fas fa-key"></i></div>
+                        <div class="card-title">DECRYPTOR</div>
+                        <div class="card-sub">HASH VALIDATION</div>
                     </div>
-                    <div class="card-title">STEGO DRIVE</div>
-                    <div class="card-sub">LSB INJECTION</div>
-                </div>
-            </a>
+                </a>
+            </div>
+            <div class="col-md-3 col-6 card-container">
+                <a href="/vault" class="holo-card tilt-effect card-vault">
+                    <div class="holo-content">
+                        <div class="card-icon"><i class="fas fa-database"></i></div>
+                        <div class="card-title">SECURE VAULT</div>
+                        <div class="card-sub">ENCRYPT STORAGE</div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-md-3 col-6 card-container">
+                <a href="/stego" class="holo-card tilt-effect card-stego">
+                    <div class="holo-content">
+                        <div class="card-icon"><i class="fas fa-image"></i></div>
+                        <div class="card-title">STEGO DRIVE</div>
+                        <div class="card-sub">LSB INJECTION</div>
+                    </div>
+                </a>
+            </div>
         </div>
     </div>
 
-    <div class="section-separator">
-        <div class="line"></div>
-        <div class="sec-title"><i class="fas fa-satellite-dish"></i> THREAT INTELLIGENCE</div>
-        <div class="line rev"></div>
-    </div>
-
-    <div class="row justify-content-center">
-        <div class="col-md-4 col-6 card-container">
-            <a href="/darkweb" class="holo-card tilt-effect" style="border-color: rgba(188, 19, 254, 0.4);">
-                <div class="holo-content">
-                    <div class="card-icon" style="color: var(--neon-purple); text-shadow: 0 0 15px var(--neon-purple);">
-                        <i class="fas fa-globe"></i>
-                    </div>
-                    <div class="card-title">DARKWEB OSINT</div>
-                    <div class="card-sub">BREACH SCANNER</div>
-                </div>
-            </a>
+    <div class="wheel-section">
+        <div class="section-separator">
+            <div class="line"></div><div class="sec-title">THREAT INTELLIGENCE</div><div class="line rev"></div>
         </div>
-        <div class="col-md-4 col-6 card-container">
-            <a href="/cyber-feed" class="holo-card tilt-effect" style="border-color: rgba(0, 243, 255, 0.4);">
-                <div class="holo-content">
-                    <div class="card-icon" style="color: var(--neon-cyan); text-shadow: 0 0 15px var(--neon-cyan);">
-                        <i class="fas fa-rss"></i>
+        <div class="row justify-content-center">
+            <div class="col-md-4 col-6 card-container">
+                <a href="/darkweb" class="holo-card tilt-effect card-decrypt">
+                    <div class="holo-content">
+                        <div class="card-icon"><i class="fas fa-globe"></i></div>
+                        <div class="card-title">DARKWEB OSINT</div>
+                        <div class="card-sub">BREACH SCANNER</div>
                     </div>
-                    <div class="card-title">CYBER FEED</div>
-                    <div class="card-sub">GLOBAL THREATS</div>
-                </div>
-            </a>
-        </div>
-        <div class="col-md-4 col-12 card-container">
-            <a href="/profiler" class="holo-card tilt-effect" style="border-color: rgba(255, 176, 0, 0.4);">
-                <div class="holo-content">
-                    <div class="card-icon" style="color: var(--neon-amber); text-shadow: 0 0 15px var(--neon-amber);">
-                        <i class="fas fa-user-secret"></i>
+                </a>
+            </div>
+            <div class="col-md-4 col-6 card-container">
+                <a href="/cyber-feed" class="holo-card tilt-effect card-encrypt">
+                    <div class="holo-content">
+                        <div class="card-icon"><i class="fas fa-rss"></i></div>
+                        <div class="card-title">CYBER FEED</div>
+                        <div class="card-sub">GLOBAL THREATS</div>
                     </div>
-                    <div class="card-title">SOC-ENG PROFILER</div>
-                    <div class="card-sub">PHISHING & PSYCH</div>
-                </div>
-            </a>
+                </a>
+            </div>
+            <div class="col-md-4 col-12 card-container">
+                <a href="/profiler" class="holo-card tilt-effect card-intel">
+                    <div class="holo-content">
+                        <div class="card-icon"><i class="fas fa-user-secret"></i></div>
+                        <div class="card-title">SOC-ENG PROFILER</div>
+                        <div class="card-sub">PHISHING & PSYCH</div>
+                    </div>
+                </a>
+            </div>
         </div>
     </div>
 
-    <div class="section-separator">
-        <div class="line"></div>
-        <div class="sec-title"><i class="fas fa-brain"></i> AI & EXECUTION ENGINES</div>
-        <div class="line rev"></div>
-    </div>
-
-    <div class="row justify-content-center" style="padding-bottom: 120px;">
-        <div class="col-md-4 col-6 card-container">
-            <a href="/chatbot" class="holo-card tilt-effect" style="border-color: rgba(0, 243, 255, 0.4);">
-                <div class="holo-content">
-                    <div class="card-icon" style="color: var(--neon-cyan); text-shadow: 0 0 15px var(--neon-cyan);">
-                        <i class="fas fa-robot"></i>
-                    </div>
-                    <div class="card-title">NEURAL UPLINK</div>
-                    <div class="card-sub">AI CHAT INTERFACE</div>
-                </div>
-            </a>
+    <div class="wheel-section">
+        <div class="section-separator">
+            <div class="line"></div><div class="sec-title">AI & EXECUTION ENGINES</div><div class="line rev"></div>
         </div>
-        <div class="col-md-4 col-6 card-container">
-            <a href="/password-ai" class="holo-card tilt-effect" style="border-color: rgba(188, 19, 254, 0.4);">
-                <div class="holo-content">
-                    <div class="card-icon" style="color: var(--neon-purple); text-shadow: 0 0 15px var(--neon-purple);">
-                        <i class="fas fa-fingerprint"></i>
+        <div class="row justify-content-center">
+            <div class="col-md-4 col-6 card-container">
+                <a href="/chatbot" class="holo-card tilt-effect card-encrypt">
+                    <div class="holo-content">
+                        <div class="card-icon"><i class="fas fa-robot"></i></div>
+                        <div class="card-title">NEURAL UPLINK</div>
+                        <div class="card-sub">AI CHAT INTERFACE</div>
                     </div>
-                    <div class="card-title">PASSWORD AI</div>
-                    <div class="card-sub">ENTROPY PREDICTOR</div>
-                </div>
-            </a>
-        </div>
-        <div class="col-md-4 col-12 card-container">
-            <a href="/sandbox" class="holo-card tilt-effect" style="border-color: rgba(255, 0, 85, 0.3);">
-                <div class="holo-content">
-                    <div class="card-icon" style="color: var(--neon-pink); text-shadow: 0 0 15px var(--neon-pink);">
-                        <i class="fas fa-box-open"></i>
+                </a>
+            </div>
+            <div class="col-md-4 col-6 card-container">
+                <a href="/password-ai" class="holo-card tilt-effect card-decrypt">
+                    <div class="holo-content">
+                        <div class="card-icon"><i class="fas fa-fingerprint"></i></div>
+                        <div class="card-title">PASSWORD AI</div>
+                        <div class="card-sub">ENTROPY PREDICTOR</div>
                     </div>
-                    <div class="card-title">CODE SANDBOX</div>
-                    <div class="card-sub">ISOLATED EXECUTION</div>
-                </div>
-            </a>
+                </a>
+            </div>
+            <div class="col-md-4 col-12 card-container">
+                <a href="/sandbox" class="holo-card tilt-effect card-stego">
+                    <div class="holo-content">
+                        <div class="card-icon"><i class="fas fa-box-open"></i></div>
+                        <div class="card-title">CODE SANDBOX</div>
+                        <div class="card-sub">ISOLATED EXECUTION</div>
+                    </div>
+                </a>
+            </div>
         </div>
-    </div>
-
-    <div class="nav-dock">
-        <a href="/python-info" class="dock-btn" title="SYSTEM SPECS"><i class="fab fa-python"></i></a>
-        <a href="/security-profile" class="dock-btn btn-profile" title="SECURITY PROFILE"><i class="fas fa-shield-alt"></i></a>
-        <a href="/logout" class="dock-btn btn-logout" title="TERMINATE SESSION"><i class="fas fa-power-off"></i></a>
     </div>
 
 </div>
 
+<div class="nav-dock" id="bottom-dock">
+    <a href="/python-info" class="dock-btn" title="SYSTEM SPECS"><i class="fab fa-python"></i></a>
+    <a href="/security-profile" class="dock-btn" style="color: var(--neon-cyan);" title="SECURITY PROFILE"><i class="fas fa-shield-alt"></i></a>
+    <a href="/logout" class="dock-btn" style="color: var(--neon-pink);" title="TERMINATE SESSION"><i class="fas fa-power-off"></i></a>
+</div>
+
+<style>
+    @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(10px); } }
+</style>
+
 <script>
+    // --- 1. DYNAMIC DIAGONAL WHEEL ENGINE ---
+    const sections = document.querySelectorAll('.wheel-section');
+    const totalSections = sections.length;
+    
+    let targetScroll = window.scrollY;
+    let currentScroll = window.scrollY;
+
+    window.addEventListener('scroll', () => { targetScroll = window.scrollY; });
+
+    function renderWheel() {
+        // Linear Interpolation for buttery smooth momentum scrolling
+        currentScroll += (targetScroll - currentScroll) * 0.08;
+        
+        const maxScroll = document.body.scrollHeight - window.innerHeight;
+        let progress = 0;
+        if (maxScroll > 0) {
+            progress = (currentScroll / maxScroll) * (totalSections - 1);
+        }
+
+        const winWidth = window.innerWidth;
+        const winHeight = window.innerHeight;
+
+        sections.forEach((sec, index) => {
+            // Calculate how far this specific section is from the "center" of the screen
+            const diff = progress - index; 
+            const absDiff = Math.abs(diff);
+
+            // --- 3D DIAGONAL MATH ---
+            // As user scrolls, the section travels diagonally (Horizontal X + Vertical Y) and pushes back in Depth (Z)
+            const translateX = diff * (winWidth * 0.6); // Horizontal slide
+            const translateY = diff * (winHeight * 0.4); // Vertical slide
+            const translateZ = absDiff * -1200; // Deep zoom backwards
+            
+            // Subtle rotation to make it feel like it's rounding a corner
+            const rotateX = diff * -25;
+            const rotateY = diff * 15;
+            const rotateZ = diff * -5;
+
+            // Fade out rapidly as it leaves center
+            const opacity = 1 - (absDiff * 0.85);
+
+            // Apply 3D Transform
+            sec.style.transform = `translate3d(${translateX}px, ${translateY}px, ${translateZ}px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) rotateZ(${rotateZ}deg)`;
+            
+            // --- STRICT CLICKABILITY FIX ---
+            // If the element is not dead center, we completely hide it and strip it of pointer events
+            // This prevents invisible stacked divs from blocking your mouse clicks
+            if (opacity <= 0) {
+                sec.style.opacity = 0;
+                sec.style.visibility = 'hidden';
+                sec.style.pointerEvents = 'none';
+            } else {
+                sec.style.opacity = opacity;
+                sec.style.visibility = 'visible';
+                
+                // Only make the section clickable if it is almost perfectly centered
+                if (absDiff < 0.25) {
+                    sec.style.pointerEvents = 'auto';
+                    sec.style.zIndex = 1000;
+                } else {
+                    sec.style.pointerEvents = 'none';
+                    sec.style.zIndex = Math.round(100 - (absDiff * 10));
+                }
+            }
+        });
+
+        requestAnimationFrame(renderWheel);
+    }
+    
+    // Start Animation Loop
+    renderWheel();
+
+    // --- 2. LOCAL 3D CARD HOVER EFFECTS ---
+    const cards = document.querySelectorAll('.tilt-effect');
+    cards.forEach(card => {
+        card.addEventListener('mousemove', (e) => {
+            const rect = card.getBoundingClientRect();
+            const x = e.clientX - rect.left; 
+            const y = e.clientY - rect.top;
+            
+            const rotateX = ((y - rect.height/2) / rect.height/2) * -12;
+            const rotateY = ((x - rect.width/2) / rect.width/2) * 12;
+            
+            card.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.05, 1.05, 1.05)`;
+        });
+        
+        card.addEventListener('mouseleave', () => { 
+            card.style.transform = `rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`; 
+        });
+    });
+
+    // --- 3. BACKGROUND PARTICLE SYSTEM (Neural Swarm) ---
     const canvas = document.getElementById('neural-canvas');
     const ctx = canvas.getContext('2d');
-    let width, height; let particles = [];
+    let width, height, particlesArray;
     
+    let mouse = { x: null, y: null, radius: 150 };
+    window.addEventListener('mousemove', event => { mouse.x = event.clientX; mouse.y = event.clientY; });
+    window.addEventListener('mouseout', () => { mouse.x = null; mouse.y = null; });
+
     function resize() { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; }
     window.addEventListener('resize', resize); resize();
 
     class Particle {
         constructor() {
             this.x = Math.random() * width; this.y = Math.random() * height;
-            this.vx = (Math.random() - 0.5) * 0.5; this.vy = (Math.random() - 0.5) * 0.5;
-            this.size = Math.random() * 2;
+            this.size = Math.random() * 2 + 0.5;
+            this.density = (Math.random() * 20) + 1;
+            const colors = ['#00f3ff', '#bc13fe', '#ff0055'];
+            this.color = colors[Math.floor(Math.random() * colors.length)];
+            this.vx = (Math.random() - 0.5) * 1.2;
+            this.vy = (Math.random() - 0.5) * 1.2;
+        }
+        draw() {
+            ctx.fillStyle = this.color;
+            ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
         }
         update() {
             this.x += this.vx; this.y += this.vy;
             if (this.x < 0 || this.x > width) this.vx *= -1;
             if (this.y < 0 || this.y > height) this.vy *= -1;
-        }
-        draw() {
-            ctx.fillStyle = 'rgba(0, 243, 255, 0.5)';
-            ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
+
+            if (mouse.x != null) {
+                let dx = mouse.x - this.x; let dy = mouse.y - this.y;
+                let distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance < mouse.radius) {
+                    let force = (mouse.radius - distance) / mouse.radius;
+                    this.x -= (dx / distance) * force * this.density * 0.5;
+                    this.y -= (dy / distance) * force * this.density * 0.5;
+                }
+            }
+            this.draw();
         }
     }
 
-    for (let i = 0; i < 100; i++) particles.push(new Particle());
+    function initParticles() {
+        particlesArray = [];
+        for (let i = 0; i < (width * height) / 7000; i++) particlesArray.push(new Particle());
+    }
 
-    function animate() {
-        ctx.clearRect(0, 0, width, height);
-        for (let i = 0; i < particles.length; i++) {
-            particles[i].update(); particles[i].draw();
-            for (let j = i; j < particles.length; j++) {
-                const dx = particles[i].x - particles[j].x; const dy = particles[i].y - particles[j].y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                if (dist < 150) {
-                    ctx.beginPath(); ctx.strokeStyle = `rgba(188, 19, 254, ${1 - dist/150})`;
-                    ctx.moveTo(particles[i].x, particles[i].y); ctx.lineTo(particles[j].x, particles[j].y); ctx.stroke();
+    function animateParticles() {
+        ctx.fillStyle = 'rgba(2, 2, 5, 0.2)'; 
+        ctx.fillRect(0, 0, width, height);
+        
+        particlesArray.forEach(p => p.update());
+        
+        for (let a = 0; a < particlesArray.length; a++) {
+            for (let b = a; b < particlesArray.length; b++) {
+                let dx = particlesArray[a].x - particlesArray[b].x;
+                let dy = particlesArray[a].y - particlesArray[b].y;
+                let dist = dx*dx + dy*dy;
+                if (dist < 9000) {
+                    ctx.strokeStyle = `rgba(188, 19, 254, ${(1 - dist/9000) * 0.15})`;
+                    ctx.beginPath(); ctx.moveTo(particlesArray[a].x, particlesArray[a].y);
+                    ctx.lineTo(particlesArray[b].x, particlesArray[b].y); ctx.stroke();
                 }
             }
         }
-        requestAnimationFrame(animate);
+        requestAnimationFrame(animateParticles);
     }
-    animate();
-
-    const cards = document.querySelectorAll('.tilt-effect');
-    cards.forEach(card => {
-        card.addEventListener('mousemove', (e) => {
-            const rect = card.getBoundingClientRect();
-            const x = e.clientX - rect.left; const y = e.clientY - rect.top;
-            const rotateX = ((y - rect.height/2) / rect.height/2) * -15;
-            const rotateY = ((x - rect.width/2) / rect.width/2) * 15;
-            card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
-        });
-        card.addEventListener('mouseleave', () => { card.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg)`; });
-    });
+    
+    initParticles(); animateParticles();
 </script>
 
 </body>

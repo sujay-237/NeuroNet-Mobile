@@ -24,8 +24,8 @@
             font-family: 'Rajdhani', sans-serif;
             overflow-x: hidden;
             margin: 0;
-            /* Extra height to allow smooth scrolling through the sections */
-            height: 450vh; 
+            /* Height scaled for 5 smooth wheel sections */
+            height: 550vh; 
         }
 
         /* --- ADVANCED FLUID CANVAS --- */
@@ -44,13 +44,13 @@
         .wheel-container {
             position: fixed;
             top: 0; left: 0; width: 100vw; height: 100vh;
-            perspective: 2500px; /* Deepened perspective */
+            perspective: 2500px;
             display: flex;
             align-items: center;
             justify-content: center;
             transform-style: preserve-3d;
             z-index: 10;
-            pointer-events: none; /* Let clicks pass through container */
+            pointer-events: none;
         }
 
         .wheel-section {
@@ -61,7 +61,6 @@
             will-change: transform, opacity, z-index, visibility;
             opacity: 0;
             visibility: hidden;
-            /* Container passes clicks through, but the active section catches them */
             pointer-events: none; 
         }
 
@@ -148,6 +147,29 @@
         .card-intel:hover { background: linear-gradient(145deg, rgba(255, 176, 0, 0.1), rgba(255, 176, 0, 0.25)); border-color: var(--neon-amber); box-shadow: 0 20px 60px rgba(255, 176, 0, 0.2); }
         .card-intel:hover .card-icon { text-shadow: 0 0 40px var(--neon-amber); }
 
+        /* TELEMETRY BADGES */
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-family: 'JetBrains Mono';
+            font-size: 0.7rem;
+            letter-spacing: 1px;
+            font-weight: bold;
+        }
+        .status-online {
+            background: rgba(0, 255, 157, 0.2);
+            color: var(--neon-green);
+            border: 1px solid var(--neon-green);
+            box-shadow: 0 0 10px rgba(0, 255, 157, 0.3);
+        }
+        .status-fallback {
+            background: rgba(255, 176, 0, 0.2);
+            color: var(--neon-amber);
+            border: 1px solid var(--neon-amber);
+            box-shadow: 0 0 10px rgba(255, 176, 0, 0.3);
+        }
+
         /* --- NAV DOCK --- */
         .nav-dock {
             position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
@@ -161,6 +183,22 @@
         .dock-btn { color: rgba(255,255,255,0.5); font-size: 1.5rem; padding: 10px; transition: 0.3s; position: relative; text-decoration: none; z-index: 1001; }
         .dock-btn:hover { color: #fff; transform: translateY(-10px) scale(1.1); text-shadow: 0 10px 20px rgba(255,255,255,0.5); }
 
+        /* LIVE TELEMETRY PILL */
+        .telemetry-pill {
+            position: fixed; top: 20px; right: 20px; z-index: 1001;
+            background: rgba(5, 5, 10, 0.85); backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 243, 255, 0.3); border-radius: 30px;
+            padding: 8px 18px; font-family: 'JetBrains Mono'; font-size: 0.75rem;
+            color: #fff; display: flex; align-items: center; gap: 10px;
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.15);
+        }
+        .pill-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--neon-green); box-shadow: 0 0 8px var(--neon-green);
+            animation: pulse-dot 2s infinite alternate;
+        }
+        @keyframes pulse-dot { 0% { opacity: 0.4; transform: scale(0.8); } 100% { opacity: 1; transform: scale(1.2); } }
+
         @keyframes fadeInDock { to { opacity: 1; transform: translateX(-50%) translateY(0); } }
         @keyframes glitch-anim-1 { 0% { clip-path: inset(20% 0 80% 0); transform: translate(-3px, 2px); } 100% { clip-path: inset(30% 0 20% 0); transform: translate(3px, -2px); } }
         @keyframes glitch-anim-2 { 0% { clip-path: inset(10% 0 60% 0); transform: translate(3px, -2px); } 100% { clip-path: inset(5% 0 80% 0); transform: translate(-3px, 2px); } }
@@ -173,6 +211,7 @@
             .card-title { font-size: 1rem; }
             .line { width: 10vw; }
             .nav-dock { width: 90%; justify-content: space-between; gap: 0; bottom: 20px; padding: 15px 30px; }
+            .telemetry-pill { top: 10px; right: 10px; font-size: 0.65rem; padding: 5px 12px; }
         }
     </style>
 </head>
@@ -181,14 +220,99 @@
 <div class="ambient-glow"></div>
 <canvas id="neural-canvas"></canvas>
 
+<!-- Top Right Live Cloud Status Pill -->
+<div class="telemetry-pill" id="livePill">
+    <span class="pill-dot" id="pillDot"></span>
+    <span id="pillRegion">VERCEL: LOCAL</span>
+    <span style="color: rgba(255,255,255,0.3)">|</span>
+    <span id="pillStatus" style="color: var(--neon-green);">ONLINE</span>
+</div>
+
 <div class="wheel-container" id="wheel">
     
+    <!-- 0. HERO TITLE -->
     <div class="wheel-section header-section">
         <h1 class="main-title">NEURO-NET</h1>
-        <div class="sub-tagline">/// AI-DRIVEN INTRUSION PROFILING SYSTEM</div>
-        <p style="margin-top: 30px; color: rgba(255,255,255,0.4); font-size: 0.8rem; letter-spacing: 2px;">SCROLL TO INITIALIZE SYSTEM <br><i class="fas fa-chevron-down" style="margin-top:10px; animation: bounce 2s infinite;"></i></p>
+        <div class="sub-tagline">/// CLOUD-NATIVE CYBERSECURITY & AI INTELLIGENCE</div>
+        <p style="margin-top: 30px; color: rgba(255,255,255,0.4); font-size: 0.8rem; letter-spacing: 2px;">
+            SCROLL TO EXPLORE ARCHITECTURE <br><i class="fas fa-chevron-down" style="margin-top:10px; animation: bounce 2s infinite;"></i>
+        </p>
     </div>
 
+    <!-- 1. LIVE CLOUD ARCHITECTURE & TELEMETRY SECTION -->
+    <div class="wheel-section">
+        <div class="section-separator">
+            <div class="line"></div><div class="sec-title">LIVE CLOUD TELEMETRY</div><div class="line rev"></div>
+        </div>
+        <div class="row justify-content-center">
+            <!-- COMPUTE -->
+            <div class="col-md-3 col-6 card-container">
+                <div class="holo-card tilt-effect card-encrypt" style="cursor: default;">
+                    <div class="holo-content">
+                        <div class="card-icon"><i class="fas fa-server"></i></div>
+                        <div class="card-title">SERVERLESS COMPUTE</div>
+                        <div class="card-sub" id="statComputeRuntime">VERCEL SERVERLESS</div>
+                        <div style="margin-top: 15px;">
+                            <span class="status-badge status-online" id="badgeCompute">ONLINE</span>
+                        </div>
+                        <div style="margin-top: 10px; font-size: 0.75rem; font-family: 'JetBrains Mono'; color: var(--neon-cyan);">
+                            REGION: <span id="statRegion" style="font-weight: bold;">--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- AIaaS MULTI-KEY POOL -->
+            <div class="col-md-3 col-6 card-container">
+                <div class="holo-card tilt-effect card-intel" style="cursor: default;">
+                    <div class="holo-content">
+                        <div class="card-icon"><i class="fas fa-brain"></i></div>
+                        <div class="card-title">AIaaS POOL</div>
+                        <div class="card-sub" id="statAiModel">GEMINI 2.5 FLASH</div>
+                        <div style="margin-top: 15px;">
+                            <span class="status-badge status-online" id="badgeAiaas">ONLINE</span>
+                        </div>
+                        <div style="margin-top: 10px; font-size: 0.75rem; font-family: 'JetBrains Mono'; color: var(--neon-amber);">
+                            ACTIVE KEYS: <span id="statAiKeys" style="font-weight: bold;">--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- DBaaS & DISTRIBUTED TTL CACHE -->
+            <div class="col-md-3 col-6 card-container">
+                <div class="holo-card tilt-effect card-vault" style="cursor: default;">
+                    <div class="holo-content">
+                        <div class="card-icon"><i class="fas fa-database"></i></div>
+                        <div class="card-title">DBaaS & TTL CACHE</div>
+                        <div class="card-sub" id="statCacheEngine">MONGODB ATLAS</div>
+                        <div style="margin-top: 15px;">
+                            <span class="status-badge status-online" id="badgeDbaas">ONLINE</span>
+                        </div>
+                        <div style="margin-top: 10px; font-size: 0.75rem; font-family: 'JetBrains Mono'; color: var(--neon-green);">
+                            TTL: <span id="statTtl" style="font-weight: bold;">24h OSINT / 1h RATE</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- BaaS & OBJECT STORAGE -->
+            <div class="col-md-3 col-6 card-container">
+                <div class="holo-card tilt-effect card-stego" style="cursor: default;">
+                    <div class="holo-content">
+                        <div class="card-icon"><i class="fas fa-cloud-upload-alt"></i></div>
+                        <div class="card-title">BaaS & STORAGE</div>
+                        <div class="card-sub">SUPABASE STORAGE</div>
+                        <div style="margin-top: 15px;">
+                            <span class="status-badge status-online" id="badgeBaas">ONLINE</span>
+                        </div>
+                        <div style="margin-top: 10px; font-size: 0.75rem; font-family: 'JetBrains Mono'; color: var(--neon-pink);">
+                            BUCKET: <span id="statBucket" style="font-weight: bold;">stego-vault</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. CRYPTOGRAPHIC CORE -->
     <div class="wheel-section">
         <div class="section-separator">
             <div class="line"></div><div class="sec-title">CRYPTOGRAPHIC CORE</div><div class="line rev"></div>
@@ -233,6 +357,7 @@
         </div>
     </div>
 
+    <!-- 3. THREAT INTELLIGENCE -->
     <div class="wheel-section">
         <div class="section-separator">
             <div class="line"></div><div class="sec-title">THREAT INTELLIGENCE</div><div class="line rev"></div>
@@ -243,7 +368,7 @@
                     <div class="holo-content">
                         <div class="card-icon"><i class="fas fa-globe"></i></div>
                         <div class="card-title">DARKWEB OSINT</div>
-                        <div class="card-sub">BREACH SCANNER</div>
+                        <div class="card-sub">BREACH & TTL CACHE</div>
                     </div>
                 </a>
             </div>
@@ -268,6 +393,7 @@
         </div>
     </div>
 
+    <!-- 4. AI & EXECUTION ENGINES -->
     <div class="wheel-section">
         <div class="section-separator">
             <div class="line"></div><div class="sec-title">AI & EXECUTION ENGINES</div><div class="line rev"></div>
@@ -296,7 +422,7 @@
                     <div class="holo-content">
                         <div class="card-icon"><i class="fas fa-box-open"></i></div>
                         <div class="card-title">CODE SANDBOX</div>
-                        <div class="card-sub">ISOLATED EXECUTION</div>
+                        <div class="card-sub">HARDENED ISOLATION</div>
                     </div>
                 </a>
             </div>
@@ -316,6 +442,62 @@
 </style>
 
 <script>
+    // --- 0. LIVE CLOUD TELEMETRY FETCH ---
+    async function updateCloudTelemetry() {
+        try {
+            const resp = await fetch('/api/cloud-health');
+            if (!resp.ok) throw new Error("Health API error");
+            const data = await resp.json();
+
+            // 1. Compute
+            const runtime = data.compute?.runtime || "Vercel Serverless";
+            const region = data.compute?.vercel_region || "local-node";
+            document.getElementById('statComputeRuntime').innerText = runtime.toUpperCase();
+            document.getElementById('statRegion').innerText = region.toUpperCase();
+            document.getElementById('pillRegion').innerText = `${runtime.includes('Vercel') ? 'VERCEL' : 'HOST'}: ${region.toUpperCase()}`;
+
+            // 2. AIaaS Multi-Key Pool
+            const aiOnline = data.aiaas?.status === "ONLINE";
+            const aiKeys = data.aiaas?.active_clients_count || data.aiaas?.total_keys_configured || 0;
+            const badgeAiaas = document.getElementById('badgeAiaas');
+            badgeAiaas.innerText = aiOnline ? "ONLINE" : "FALLBACK";
+            badgeAiaas.className = `status-badge ${aiOnline ? 'status-online' : 'status-fallback'}`;
+            document.getElementById('statAiKeys').innerText = `${aiKeys} KEYS POOLED`;
+
+            // 3. DBaaS & Distributed TTL Cache
+            const dbOnline = data.dbaas_cache?.status === "ONLINE";
+            const badgeDbaas = document.getElementById('badgeDbaas');
+            badgeDbaas.innerText = dbOnline ? "ONLINE" : "FALLBACK";
+            badgeDbaas.className = `status-badge ${dbOnline ? 'status-online' : 'status-fallback'}`;
+            if (data.dbaas_cache?.engine) {
+                document.getElementById('statCacheEngine').innerText = dbOnline ? "MONGODB ATLAS TTL" : "LOCAL CACHE";
+            }
+
+            // 4. BaaS Object Storage
+            const baasOnline = data.baas_storage?.status === "ONLINE";
+            const badgeBaas = document.getElementById('badgeBaas');
+            badgeBaas.innerText = baasOnline ? "ONLINE" : "FALLBACK";
+            badgeBaas.className = `status-badge ${baasOnline ? 'status-online' : 'status-fallback'}`;
+
+            // Pill
+            const pillDot = document.getElementById('pillDot');
+            const pillStatus = document.getElementById('pillStatus');
+            if (aiOnline && dbOnline) {
+                pillDot.style.background = 'var(--neon-green)';
+                pillStatus.innerText = 'ONLINE';
+                pillStatus.style.color = 'var(--neon-green)';
+            } else {
+                pillDot.style.background = 'var(--neon-amber)';
+                pillStatus.innerText = 'HYBRID';
+                pillStatus.style.color = 'var(--neon-amber)';
+            }
+        } catch (e) {
+            console.warn("Cloud telemetry fetch fallback:", e);
+            document.getElementById('pillStatus').innerText = 'STANDBY';
+        }
+    }
+    document.addEventListener('DOMContentLoaded', updateCloudTelemetry);
+
     // --- 1. DYNAMIC DIAGONAL WHEEL ENGINE ---
     const sections = document.querySelectorAll('.wheel-section');
     const totalSections = sections.length;
@@ -326,7 +508,6 @@
     window.addEventListener('scroll', () => { targetScroll = window.scrollY; });
 
     function renderWheel() {
-        // Linear Interpolation for buttery smooth momentum scrolling
         currentScroll += (targetScroll - currentScroll) * 0.08;
         
         const maxScroll = document.body.scrollHeight - window.innerHeight;
@@ -339,30 +520,21 @@
         const winHeight = window.innerHeight;
 
         sections.forEach((sec, index) => {
-            // Calculate how far this specific section is from the "center" of the screen
             const diff = progress - index; 
             const absDiff = Math.abs(diff);
 
-            // --- 3D DIAGONAL MATH ---
-            // As user scrolls, the section travels diagonally (Horizontal X + Vertical Y) and pushes back in Depth (Z)
-            const translateX = diff * (winWidth * 0.6); // Horizontal slide
-            const translateY = diff * (winHeight * 0.4); // Vertical slide
-            const translateZ = absDiff * -1200; // Deep zoom backwards
+            const translateX = diff * (winWidth * 0.6);
+            const translateY = diff * (winHeight * 0.4);
+            const translateZ = absDiff * -1200;
             
-            // Subtle rotation to make it feel like it's rounding a corner
             const rotateX = diff * -25;
             const rotateY = diff * 15;
             const rotateZ = diff * -5;
 
-            // Fade out rapidly as it leaves center
             const opacity = 1 - (absDiff * 0.85);
 
-            // Apply 3D Transform
             sec.style.transform = `translate3d(${translateX}px, ${translateY}px, ${translateZ}px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) rotateZ(${rotateZ}deg)`;
             
-            // --- STRICT CLICKABILITY FIX ---
-            // If the element is not dead center, we completely hide it and strip it of pointer events
-            // This prevents invisible stacked divs from blocking your mouse clicks
             if (opacity <= 0) {
                 sec.style.opacity = 0;
                 sec.style.visibility = 'hidden';
@@ -371,7 +543,6 @@
                 sec.style.opacity = opacity;
                 sec.style.visibility = 'visible';
                 
-                // Only make the section clickable if it is almost perfectly centered
                 if (absDiff < 0.25) {
                     sec.style.pointerEvents = 'auto';
                     sec.style.zIndex = 1000;
@@ -384,8 +555,6 @@
 
         requestAnimationFrame(renderWheel);
     }
-    
-    // Start Animation Loop
     renderWheel();
 
     // --- 2. LOCAL 3D CARD HOVER EFFECTS ---
@@ -395,10 +564,8 @@
             const rect = card.getBoundingClientRect();
             const x = e.clientX - rect.left; 
             const y = e.clientY - rect.top;
-            
             const rotateX = ((y - rect.height/2) / rect.height/2) * -12;
             const rotateY = ((x - rect.width/2) / rect.width/2) * 12;
-            
             card.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.05, 1.05, 1.05)`;
         });
         

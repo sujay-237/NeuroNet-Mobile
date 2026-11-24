@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, jsonify, send_file, sessi
 import datetime
 import random
 import os
+import sys
 import time
 import requests
 import json
@@ -10,12 +11,16 @@ import re
 import hashlib
 import string
 import secrets
+import uuid
+import tempfile
+import io
 import xml.etree.ElementTree as ET
 from collections import Counter
-from supabase import create_client, Client 
+from supabase import create_client, Client
 from pymongo import MongoClient
 
 # CORE MODULE IMPORTS
+from core.cloud_cache import CloudCacheManager
 from core.ai_integrator import NeuroAI
 from core.os_sim import Sandbox
 from core.security_modules import StegoDrive
@@ -24,7 +29,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 main_bp = Blueprint('main', __name__)
 
-# --- SUPABASE CONFIGURATION (Dashboard, Users, Activity, Attacks) ---
+# --- SUPABASE CONFIGURATION (Dashboard, Users, Activity, Attacks, Storage) ---
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
@@ -32,39 +37,66 @@ supabase = None
 if SUPABASE_URL and SUPABASE_KEY:
     try:
         supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-        print("[SYSTEM] Connected to Supabase Database (Core Logs & Users).")
+        print("[SYSTEM] Connected to Supabase Database (Core Logs, Users & Storage).")
     except Exception as e:
         print(f"[SYSTEM ERROR] Could not connect to Supabase: {e}")
 else:
-    print("[SYSTEM WARNING] Supabase Credentials not found. Database features disabled.")
+    print("[SYSTEM WARNING] Supabase Credentials not found. Database/Storage features operating in fallback.")
 
-# --- MONGODB CONFIGURATION (Secure Vault Only) ---
+# --- MONGODB CONFIGURATION & CLOUD CACHE ---
 MONGO_URI = os.getenv("MONGO_URI")
-
-mongo_client = None
-mongo_db = None
-if MONGO_URI:
-    try:
-        mongo_client = MongoClient(MONGO_URI)
-        mongo_db = mongo_client['neuronet_db'] 
-        print("[SYSTEM] Connected to MongoDB (Secure Vault).")
-    except Exception as e:
-        print(f"[SYSTEM ERROR] Could not connect to MongoDB: {e}")
-else:
-    print("[SYSTEM WARNING] MongoDB Credentials not found. Vault features disabled.")
+cloud_cache = CloudCacheManager(mongo_uri=MONGO_URI)
+mongo_db = cloud_cache.db
 
 # --- INSTANCE INITIALIZATION ---
-ai_brain = NeuroAI()
+ai_brain = NeuroAI(cache_manager=cloud_cache)
 sandbox_manager = Sandbox()
 stego_engine = StegoDrive()
 code_runner = CodeSandbox()
 
+# In-memory artifact buffer for stream downloads
+_LAST_ENCODED_CACHE = {}
+
 # --- GLOBAL STATE ---
 SERVER_START_TIME = time.time()
 
+
 # --- HELPER FUNCTIONS ---
+def get_client_ip(req):
+    """Safely extracts real client IP behind proxies, load balancers, or Vercel Edge."""
+    forwarded = req.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return req.remote_addr or "127.0.0.1"
+
+
+def upload_to_supabase_storage(file_bytes, filename, mime_type):
+    """
+    Uploads encoded artifacts to Supabase Storage bucket ('stego-vault')
+    and creates a temporary signed download URL (valid 1 hour).
+    Returns None if Supabase Storage is not configured or operation fails.
+    """
+    if not supabase:
+        return None
+    try:
+        bucket_name = "stego-vault"
+        storage = supabase.storage.from_(bucket_name)
+        storage.upload(
+            path=filename,
+            file=file_bytes,
+            file_options={"content-type": mime_type, "upsert": "true"}
+        )
+        res = storage.create_signed_url(filename, 3600)
+        if isinstance(res, dict):
+            return res.get("signedURL") or res.get("signedUrl")
+        return getattr(res, "signed_url", getattr(res, "signedURL", None))
+    except Exception as e:
+        print(f"[STORAGE WARNING] Supabase Storage upload to 'stego-vault' failed ({e}). Falling back to stream.")
+        return None
+
+
 def log_activity(email, action):
-    """Logs user activity to Supabase"""
+    """Logs user activity to Supabase with error suppression for serverless stability."""
     if supabase:
         try:
             supabase.table('user_activity').insert({
@@ -75,65 +107,77 @@ def log_activity(email, action):
         except Exception as e:
             print(f"[DB ERROR] Failed to log activity to Supabase: {e}")
 
+
 def get_system_stats():
-    """Calculates real-time server uptime, CPU load, and memory usage for the HUD."""
+    """Calculates server uptime, CPU load, and memory usage with safe serverless fallbacks."""
     uptime_seconds = int(time.time() - SERVER_START_TIME)
     hours, remainder = divmod(uptime_seconds, 3600)
     minutes, seconds = divmod(remainder, 60)
     uptime_str = f"{hours:02}h {minutes:02}m {seconds:02}s"
 
+    cpu_percent = 0.0
+    mem_percent = 0.0
+    memory_str = "Serverless Contained"
+
     try:
         import psutil
-        # Get accurate CPU and Memory data
-        cpu_percent = psutil.cpu_percent(interval=0.1)
-        mem = psutil.virtual_memory()
-        mem_percent = mem.percent
-        memory_str = f"{mem.used // (1024*1024)} MB"
-        
-        # Simulate an active network load percentage between 1 and 15% for visual effect
-        net_percent = random.randint(1, 15)
+        try:
+            cpu_percent = psutil.cpu_percent(interval=0.0)
+        except Exception:
+            cpu_percent = 0.0
 
-        return {
-            "uptime": uptime_str, 
-            "memory": memory_str,
-            "cpu_percent": cpu_percent,
-            "mem_percent": mem_percent,
-            "net_percent": net_percent
-        }
-    except ImportError:
-        return {
-            "uptime": uptime_str, 
-            "memory": "0 MB",
-            "cpu_percent": 0,
-            "mem_percent": 0,
-            "net_percent": 0
-        }
+        try:
+            mem = psutil.virtual_memory()
+            mem_percent = mem.percent
+            memory_str = f"{mem.used // (1024*1024)} MB"
+        except Exception:
+            mem_percent = 0.0
+            memory_str = "64 MB (Restricted)"
+    except Exception:
+        pass
+
+    net_percent = random.randint(1, 15)
+
+    return {
+        "uptime": uptime_str,
+        "memory": memory_str,
+        "cpu_percent": cpu_percent,
+        "mem_percent": mem_percent,
+        "net_percent": net_percent
+    }
+
 
 def quick_sort_attacks(data):
     """Sorts attack history by threat score (Descending)."""
-    if not data or len(data) <= 1: return data
+    if not data or len(data) <= 1:
+        return data
     pivot = data[len(data) // 2]
     def safe_score(item):
-        try: return float(item.get('score', 0))
-        except (ValueError, TypeError): return 0.0
+        try:
+            return float(item.get('score', 0))
+        except (ValueError, TypeError):
+            return 0.0
     pivot_val = safe_score(pivot)
     left = [x for x in data if safe_score(x) > pivot_val]
     middle = [x for x in data if safe_score(x) == pivot_val]
     right = [x for x in data if safe_score(x) < pivot_val]
     return quick_sort_attacks(left) + middle + quick_sort_attacks(right)
 
+
 def parse_ai_json(prompt):
     """Safely asks the AI for JSON and parses it, avoiding crashes."""
-    if not ai_brain.is_active: return None
+    if not ai_brain.is_active:
+        return None
     try:
         raw = ai_brain.chat(prompt)
         cleaned = raw.replace("```json", "").replace("```", "").strip()
         return json.loads(cleaned)
-    except Exception as e: return None
+    except Exception:
+        return None
 
-# ADVANCED FEATURE: NLP SOCIAL ENGINEERING & PHISHING ANALYZER
+
 def analyze_psychology(text):
-    """Uses LLM to detect sentiment, tactics, targeted traits, and phishing parameters in text."""
+    """Uses LLM to detect sentiment, tactics, and phishing parameters in text."""
     prompt = f"""You are a cybersecurity threat intelligence analyst. Analyze the following text for social engineering manipulation, target profiling, AND phishing indicators.
     Respond ONLY with a valid JSON object in EXACTLY this format:
     {{
@@ -148,9 +192,9 @@ def analyze_psychology(text):
     Text to analyze: {text}"""
     
     ai_result = parse_ai_json(prompt)
-    if ai_result: return ai_result
+    if ai_result:
+        return ai_result
     
-    # Fallback if AI is offline
     return {
         "threat_score": 50, "phishing_probability": 50,
         "tactics": ["AI Offline - Keyword Analysis Defaulted"],
@@ -159,17 +203,23 @@ def analyze_psychology(text):
         "personality": {"neuroticism": 50, "openness": 50, "agreeableness": 50}
     }
 
+
 def search_breach_data(email):
     """Queries XposedOrNot for Breaches AND Pastes."""
     url = f"https://api.xposedornot.com/v1/breach-analytics?email={email}"
     headers = {"User-Agent": "Mozilla/5.0"}
     try:
         response = requests.get(url, headers=headers, timeout=10)
-        if response.status_code == 404: return []
-        if response.status_code != 200: return [{"Name": "API ERROR", "Description": f"Status: {response.status_code}", "DataClasses": ["Error"]}]
-        try: data = response.json()
-        except ValueError: return []
-        if data is None: return []
+        if response.status_code == 404:
+            return []
+        if response.status_code != 200:
+            return [{"Name": "API ERROR", "Description": f"Status: {response.status_code}", "DataClasses": ["Error"]}]
+        try:
+            data = response.json()
+        except ValueError:
+            return []
+        if data is None:
+            return []
 
         formatted_results = []
         exposed = data.get("ExposedBreaches")
@@ -177,7 +227,8 @@ def search_breach_data(email):
             breaches = exposed.get("breaches_details")
             if breaches and isinstance(breaches, list):
                 for item in breaches:
-                    if not item: continue
+                    if not item:
+                        continue
                     raw_data = item.get("xposed_data", "")
                     data_classes = str(raw_data).split(";") if raw_data else ["Identity Data"]
                     formatted_results.append({
@@ -189,8 +240,9 @@ def search_breach_data(email):
                     })
         pastes = data.get("Pastes")
         if pastes and isinstance(pastes, list):
-             for item in pastes:
-                if not item: continue
+            for item in pastes:
+                if not item:
+                    continue
                 formatted_results.append({
                     "Name": f"Paste: {item.get('pasteId', 'Unknown ID')}",
                     "Domain": "Public Text Dump",
@@ -199,8 +251,9 @@ def search_breach_data(email):
                     "DataClasses": ["Raw Text", "Email"]
                 })
         return formatted_results
-    except Exception as e:
+    except Exception:
         return [{"Name": "SYSTEM ERROR", "Description": "Search process failed.", "DataClasses": ["Error"]}]
+
 
 def check_pwned_passwords(password):
     """Checks the HIBP API safely using k-Anonymity via SHA-1 hashes."""
@@ -212,9 +265,12 @@ def check_pwned_passwords(password):
         if response.status_code == 200:
             hashes = (line.split(':') for line in response.text.splitlines())
             for h, count in hashes:
-                if h == suffix: return int(count)
-    except Exception as e: pass
+                if h == suffix:
+                    return int(count)
+    except Exception:
+        pass
     return 0
+
 
 def analyze_password_strength(password):
     """Enhanced Analytics for Password Prediction (Entropy + Logic)."""
@@ -232,12 +288,11 @@ def analyze_password_strength(password):
     length = len(password)
     entropy = length * math.log2(pool_size) if pool_size > 0 else 0
 
-    # Penalties for predictable patterns
-    if re.search(r'(.)\1{2,}', password): entropy -= 10 # Repeated chars (aaa)
+    if re.search(r'(.)\1{2,}', password): entropy -= 10
     if re.search(r'(123|abc|qwerty|password|admin)', password.lower()): entropy -= 25 
     
     entropy = max(0, entropy)
-    score = min(int((entropy / 120) * 100), 100) # 120+ bits is military grade
+    score = min(int((entropy / 120) * 100), 100)
 
     crack_time = "INSTANT"
     verdict = "CRITICAL RISK"
@@ -281,13 +336,64 @@ def logout():
     return redirect('/')
 
 @main_bp.route('/api/stats')
-def api_stats(): return jsonify(get_system_stats())
+def api_stats(): 
+    return jsonify(get_system_stats())
 
-# --- AUTHENTICATION ROUTES (SUPABASE INTEGRATED) ---
+# --- LIVE CLOUD ARCHITECTURE & HEALTH DASHBOARD ---
+
+@main_bp.route('/api/cloud-health')
+def cloud_health():
+    """
+    Live Cloud Architecture and Telemetry Endpoint.
+    Monitors Compute runtime, Edge headers, AIaaS Multi-Key Pool, DBaaS/TTL Cache, and BaaS Object Storage.
+    """
+    is_vercel = bool(os.getenv("VERCEL"))
+    vercel_env = os.getenv("VERCEL_ENV", "local-development")
+    vercel_region = os.getenv("VERCEL_REGION", "local-node")
+
+    # Supabase BaaS Status
+    supabase_status = "ONLINE" if supabase is not None else "FALLBACK"
+    supabase_storage_status = "ONLINE" if supabase is not None else "FALLBACK"
+
+    # AIaaS Multi-Key Pool Status
+    ai_status = ai_brain.get_pool_status()
+
+    # DBaaS / MongoDB Distributed TTL Cache Status
+    cache_status = cloud_cache.get_status()
+
+    telemetry = {
+        "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
+        "compute": {
+            "runtime": "Vercel Serverless" if is_vercel else "Local Server",
+            "serverless": is_vercel,
+            "vercel_region": vercel_region,
+            "vercel_env": vercel_env,
+            "python_version": sys.version.split()[0],
+            "os": sys.platform
+        },
+        "aiaas": ai_status,
+        "dbaas_cache": {
+            "status": cache_status["status"],
+            "connected": cache_status["connected"],
+            "ttl_indexes": cache_status["ttl_indexes"],
+            "engine": cache_status["engine"],
+            "collections": cache_status.get("collections", [])
+        },
+        "baas_storage": {
+            "status": supabase_status,
+            "storage_bucket": "stego-vault",
+            "storage_status": supabase_storage_status,
+            "provider": "Supabase BaaS (Postgres + S3 Storage API)"
+        }
+    }
+    return jsonify(telemetry)
+
+
+# --- AUTHENTICATION & LOGIN HONEYPOT ---
 
 @main_bp.route('/register', methods=['POST'])
 def register_user():
-    data = request.json
+    data = request.json or {}
     name, email = data.get('name'), data.get('email')
     password, phone = data.get('password'), data.get('phone')
     
@@ -320,18 +426,20 @@ def register_user():
     log_activity(email, "Registered Account")
     return jsonify({"status": "success", "message": "Account created. Pending Admin Approval."})
 
+
 @main_bp.route('/login', methods=['POST'])
 def handle_login():
-    data = request.json
+    data = request.json or {}
     login_type = data.get('type')
     payload = data.get('payload', '')
     password = data.get('password', '')
     behavior = data.get('behavior', {})
     
-    if request.headers.getlist("X-Forwarded-For"):
-        attacker_ip = request.headers.getlist("X-Forwarded-For")[0]
-    else:
-        attacker_ip = request.remote_addr
+    # Vercel Edge Geolocation & IP Extraction
+    attacker_ip = get_client_ip(request)
+    country = request.headers.get("x-vercel-ip-country", "LOCAL")
+    city = request.headers.get("x-vercel-ip-city", "Localhost")
+    vercel_region = os.getenv("VERCEL_REGION", "local-node")
 
     if not password:
         return jsonify({"status": "failed", "message": "Password is required."})
@@ -340,14 +448,14 @@ def handle_login():
     if login_type == 'user':
         is_valid_email = bool(re.match(r"^[^\s@]+@[^\s@]+\.[^\s@]+$", payload))
 
-    # 1. ADMIN LOGIN LOGIC
+    # 1. ADMIN LOGIN
     if login_type == 'admin':
         if payload == "Sujay" and password == "Boss@123":
             session['role'] = 'admin'
             session['user'] = 'Admin'
             return jsonify({"status": "success", "redirect": "/dashboard"})
 
-    # 2. USER LOGIN LOGIC
+    # 2. USER LOGIN
     elif login_type == 'user':
         if is_valid_email and supabase is not None:
             try:
@@ -361,7 +469,6 @@ def handle_login():
                         session['role'] = 'user'
                         session['user'] = payload
                         
-                        # --- Process and store full password analytics ---
                         pwd_analysis = analyze_password_strength(password)
                         session['pwd_score'] = pwd_analysis.get('score', 0)
                         session['pwd_verdict'] = pwd_analysis.get('verdict', 'UNKNOWN')
@@ -369,17 +476,15 @@ def handle_login():
                         session['pwd_leaks'] = pwd_analysis.get('leaks', 0)
                         session['pwd_analytics'] = pwd_analysis.get('analytics', {})
                         
-                        # Generate a cryptographically strong suggestion
                         alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
                         session['pwd_suggestion'] = ''.join(secrets.choice(alphabet) for _ in range(16))
-                        # -------------------------------------------------------------------------
                         
-                        log_activity(payload, "Logged In")
+                        log_activity(payload, f"Logged In (Region: {vercel_region})")
                         return jsonify({"status": "success", "redirect": "/architecture"})
             except Exception as e:
                 print(f"Login Check Error: {e}")
 
-    # --- 3. DETERMINE IF SUSPICIOUS (ATTACK/SQLi) OR JUST INVALID ---
+    # 3. SUSPICIOUS / ATTACK DETECTION
     sql_patterns = re.compile(r"(--|\bOR\b\s+.+?=|<script>|\bUNION\b|;\s*(DROP|SELECT|UPDATE|INSERT|DELETE)|['\"]\s*=\s*['\"])", re.IGNORECASE)
     
     is_suspicious = False
@@ -391,13 +496,12 @@ def handle_login():
     if not is_suspicious:
         return jsonify({"status": "failed", "message": "Invalid login credentials."})
 
-    # --- 4. MALICIOUS ATTACK LOGGING & TARPITTING ---
+    # 4. MALICIOUS ATTACK LOGGING & EDGE TELEMETRY
     combined_payload = f"ID: {payload} | Pass: {password}"
     
     keystrokes = behavior.get('keys', [])
     wpm = 0
     backspaces = sum(1 for k in keystrokes if k.get('key') == 'Backspace')
-    
     if len(keystrokes) > 1:
         start_time = keystrokes[0].get('time')
         end_time = keystrokes[-1].get('time')
@@ -406,42 +510,60 @@ def handle_login():
             if duration > 0:
                 wpm = int((len(payload) / 5) / duration)
 
-    sandbox_manager.run_in_sandbox(combined_payload)
+    # Synchronous OS simulation (safe on Vercel)
+    sandbox_result = sandbox_manager.run_in_sandbox(combined_payload)
     analysis = ai_brain.analyze_attack(combined_payload, wpm, backspaces, [])
     
-    try: score = float(analysis.get("threat_score", 0))
-    except: score = 0.0
+    try:
+        score = float(analysis.get("threat_score", 0))
+    except Exception:
+        score = 0.0
+
+    # Distributed Cloud Rate Limiting across serverless instances
+    rate_status = cloud_cache.track_and_rate_limit(attacker_ip, threat_score=score)
 
     log_entry = {
         "timestamp": datetime.datetime.now().strftime("%H:%M:%S"),
-        "ip": attacker_ip, 
-        "payload": combined_payload, 
-        "wpm": wpm, 
+        "ip": attacker_ip,
+        "country": country,
+        "city": city,
+        "vercel_region": vercel_region,
+        "payload": combined_payload,
+        "wpm": wpm,
         "backspaces": backspaces,
         "intent": analysis.get("intent_analysis", "Unknown"),
         "profile": analysis.get("psychological_profile", "Unknown"),
         "category": analysis.get("offender_category", "Unknown"),
-        "score": score
+        "score": score,
+        "syscall_status": sandbox_result.get("status", "CLEARED")
     }
 
     if supabase:
-        try: supabase.table('attack_logs').insert(log_entry).execute()
-        except Exception: pass
+        try:
+            supabase.table('attack_logs').insert(log_entry).execute()
+        except Exception:
+            pass
 
-    # TRAP: Redirect to Ghost Dashboard if high threat score or abnormal typing
-    if score >= 50 or wpm > 150: 
+    if mongo_db is not None:
+        try:
+            mongo_db.honeypot_attacks.insert_one(dict(log_entry))
+        except Exception:
+            pass
+
+    # TARPIT TRAP: Redirect to Ghost Dashboard if high threat score or abnormal typing
+    if score >= 50 or wpm > 150 or rate_status.get("is_blocked"): 
         session['role'] = 'ghost'
         session['ghost_ip'] = attacker_ip
         
         ident = payload if payload else attacker_ip
-        log_activity(ident, f"MALICIOUS LOGIN BLOCKED - Routed to Tarpit (Score: {score})")
-        
+        log_activity(ident, f"MALICIOUS LOGIN BLOCKED - Routed to Tarpit (Score: {score}, Region: {vercel_region})")
         return jsonify({"status": "success", "redirect": "/ghost"})
     else:
         return jsonify({"status": "failed", "message": "Invalid login credentials."})
 
 
 # --- GHOST DASHBOARD (TARPIT MODULE) ---
+
 @main_bp.route('/ghost')
 def ghost_dashboard():
     if session.get('role') != 'ghost': 
@@ -453,9 +575,8 @@ def ghost_action():
     if session.get('role') != 'ghost': 
         return jsonify({"error": "unauthorized"}), 403
     
-    action = request.json.get('action', 'Unknown')
-    
-    delay_seconds = random.randint(5, 10)
+    action = (request.json or {}).get('action', 'Unknown')
+    delay_seconds = random.randint(2, 4)
     time.sleep(delay_seconds)
     
     log_activity(f"GHOST ({session.get('ghost_ip')})", f"Tarpitted exploring {action} for {delay_seconds}s")
@@ -489,13 +610,15 @@ def dashboard():
     dominant_profile = "ANALYZING..."
     if history_data:
         categories = [attack.get('category', 'Unknown') for attack in history_data]
-        if categories: dominant_profile = Counter(categories).most_common(1)[0][0].upper()
+        if categories:
+            dominant_profile = Counter(categories).most_common(1)[0][0].upper()
 
     return render_template('dashboard.html', attacks=sorted_history, dominant_profile=dominant_profile, users=users, activities=activities)
 
 @main_bp.route('/admin/approve/<email>', methods=['POST'])
 def approve_user(email):
-    if session.get('role') != 'admin': return jsonify({"status": "failed"}), 403
+    if session.get('role') != 'admin':
+        return jsonify({"status": "failed"}), 403
     if supabase is not None:
         try:
             supabase.table('users').update({"status": "approved"}).eq("email", email).execute()
@@ -506,7 +629,8 @@ def approve_user(email):
 
 @main_bp.route('/admin/delete/<email>', methods=['POST'])
 def delete_user(email):
-    if session.get('role') != 'admin': return jsonify({"status": "failed"}), 403
+    if session.get('role') != 'admin':
+        return jsonify({"status": "failed"}), 403
     
     if supabase is not None:
         try:
@@ -517,15 +641,18 @@ def delete_user(email):
             print(f"Supabase delete failed: {e}")
             
     if mongo_db is not None:
-        try: mongo_db.vault.delete_many({"email": email}) 
-        except Exception as e: print(f"MongoDB cascade delete failed: {e}")
+        try:
+            mongo_db.vault.delete_many({"email": email}) 
+        except Exception as e:
+            print(f"MongoDB cascade delete failed: {e}")
             
     return jsonify({"status": "success"})
 
 @main_bp.route('/admin/edit_user/<email>', methods=['POST'])
 def edit_user(email):
-    if session.get('role') != 'admin': return jsonify({"status": "failed"}), 403
-    data = request.json
+    if session.get('role') != 'admin':
+        return jsonify({"status": "failed"}), 403
+    data = request.json or {}
     
     if supabase is not None:
         try:
@@ -537,20 +664,21 @@ def edit_user(email):
             if update_data:
                 supabase.table('users').update(update_data).eq("email", email).execute()
                 log_activity(session.get('user', 'Admin'), f"Modified data for {email}")
-                
         except Exception as e:
             return jsonify({"status": "failed", "message": str(e)})
             
     return jsonify({"status": "success"})
 
 
-# --- STANDARD ROUTES ---
+# --- STANDARD CRYPTOGRAPHY & UTILITY ROUTES ---
 
 @main_bp.route('/architecture')
-def architecture(): return render_template('architecture.html')
+def architecture():
+    return render_template('architecture.html')
 
 @main_bp.route('/python-info')
-def python_info(): return render_template('python_info.html')
+def python_info():
+    return render_template('python_info.html')
 
 @main_bp.route('/encrypt', methods=['GET', 'POST'])
 def encryptor():
@@ -562,7 +690,8 @@ def encryptor():
             validated_text = text + "||VALID"
             extended_key = key * (len(validated_text) // len(key) + 1)
             result = ''.join(f"{ord(c) ^ ord(k):02x}" for c, k in zip(validated_text, extended_key))
-        else: result = "ERROR: NO INPUT"
+        else:
+            result = "ERROR: NO INPUT"
     return render_template('encrypt.html', result=result)
 
 @main_bp.route('/decrypt', methods=['GET', 'POST'])
@@ -597,19 +726,33 @@ def darkweb():
     if request.method == 'POST':
         query = request.form.get('query', '').strip()
         logs = [
-            f"[OPSEC] Secure Connection Established...",
-            f"[NETWORK] Routing via node {random.randint(10,99)}.x.x.x...",
-            f"[API] Querying Threat Intelligence...",
+            "[OPSEC] Secure Connection Established...",
+            f"[NETWORK] Vercel Edge Node routing target: {query}...",
+            "[API] Querying Threat Intelligence Engine...",
             f"[TARGET] {query}"
         ]
         if "@" in query and "." in query:
             breaches = search_breach_data(query)
             if not breaches:
-                if len(breaches) == 1 and breaches[0]['Name'] in ["API ERROR", "SYSTEM ERROR"]:
-                     logs.append(f"[ERROR] {breaches[0]['Description']}")
-                else: logs.append("[RESULT] CLEAN: No compromised records found.")
-            else: logs.append(f"[RESULT] ALERT: {len(breaches)} Exposure Events Identified.")
-        else: logs.append("[ERROR] Invalid Email Syntax.")
+                logs.append("[RESULT] CLEAN: No compromised public records found.")
+            else:
+                logs.append(f"[RESULT] ALERT: {len(breaches)} Exposure Events Identified.")
+        else:
+            # Query the AI OSINT Scanner with 24h MongoDB TTL Caching
+            osint_data = ai_brain.osint_scan(query)
+            cached_flag = " (SERVED FROM 24H CLOUD CACHE)" if osint_data.get("cached") else ""
+            logs.append(f"[AI OSINT] Risk Level: {osint_data.get('risk_level')}{cached_flag}")
+            logs.append(f"[SUMMARY] {osint_data.get('summary')}")
+            breaches = [
+                {
+                    "Name": b.get("source", "Threat Intel Record"),
+                    "Domain": "Dark Web Threat Actor",
+                    "BreachDate": b.get("date", "Current"),
+                    "Description": b.get("data", "Exposure detail"),
+                    "DataClasses": ["Intelligence Record"]
+                }
+                for b in osint_data.get("breaches", [])
+            ]
     return render_template('darkweb.html', breaches=breaches, query=query, logs=logs)
 
 @main_bp.route('/chatbot', methods=['GET', 'POST'])
@@ -621,78 +764,122 @@ def chatbot():
         response = ai_brain.chat(user_input)
     return render_template('chatbot.html', response=response, last_msg=user_input)
 
+
+# --- HARDENED STEGO DRIVE (SERVERLESS READY) ---
+
 @main_bp.route('/stego', methods=['GET', 'POST'])
 def stego():
     message = ""
-    mode = "encode"
     show_download = False
+    download_url = None
     download_type = "image"
-    base_dir = os.path.abspath(os.path.dirname(__file__))
-    static_dir = os.path.join(base_dir, 'static')
-    
-    current_user = session.get('user', 'Unknown User')
-    
+    current_user = session.get('user', 'guest_agent')
+
     if request.method == 'POST':
-        mode = request.form.get('mode')
-        stego_type = request.form.get('stego_type', 'image') 
-        file = request.files.get('carrier_file') 
-        
-        if file:
-            if mode == 'encode':
-                text = request.form.get('secret_text')
-                if not text: 
-                    message = "Error: No secret text provided."
+        mode = request.form.get('mode', 'encode')
+        stego_type = request.form.get('stego_type', 'image')
+        file = request.files.get('carrier_file')
+
+        if not file or not file.filename:
+            return render_template('stego.html', message="Error: Please upload a valid carrier file.", show_download=False, download_type=stego_type)
+
+        filename_lower = file.filename.lower()
+
+        # Handle Audio MP3 serverless notification
+        if stego_type == 'audio' and filename_lower.endswith('.mp3'):
+            return render_template(
+                'stego.html',
+                message="NOTICE: MP3 encoding requires system ffmpeg which is unavailable in Vercel Serverless. Please upload a standard lossless .wav carrier file.",
+                show_download=False,
+                download_type='audio'
+            )
+
+        if mode == 'encode':
+            text = request.form.get('secret_text', '')
+            if not text:
+                return render_template('stego.html', message="Error: No secret text provided to encode.", show_download=False, download_type=stego_type)
+
+            output_bytes = None
+            if stego_type == 'image':
+                success, msg, output_bytes = stego_engine.encode(file, text)
+                message = msg
+                download_type = 'image'
+            else:
+                success, msg, output_bytes = stego_engine.encode_audio(file, text)
+                message = msg
+                download_type = 'audio'
+
+            if success and output_bytes:
+                log_activity(current_user, f"Stego Drive: Encoded {download_type.capitalize()} Payload")
+                ext = ".png" if download_type == "image" else ".wav"
+                mime = "image/png" if download_type == "image" else "audio/wav"
+                artifact_name = f"encrypted_{download_type}{ext}"
+                storage_filename = f"artifacts/{uuid.uuid4().hex}{ext}"
+
+                # Cache in-memory for session download
+                _LAST_ENCODED_CACHE[current_user] = {
+                    "bytes": output_bytes,
+                    "mime": mime,
+                    "download_name": artifact_name,
+                    "timestamp": time.time()
+                }
+
+                # Cloud Storage Upload (Supabase Storage 'stego-vault')
+                signed_url = upload_to_supabase_storage(output_bytes, storage_filename, mime)
+                if signed_url:
+                    message = "Data embedded successfully. Uploaded to Cloud Object Storage ('stego-vault'). Signed link generated."
+                    return render_template('stego.html', message=message, show_download=True, download_url=signed_url, download_type=download_type)
                 else:
-                    if stego_type == 'image':
-                        filepath = os.path.join(static_dir, 'stego_result.png')
-                        file.save(filepath)
-                        success, msg = stego_engine.encode(filepath, text, filepath)
-                        message = msg
-                        if success:
-                            show_download = True
-                            download_type = 'image'
-                            log_activity(current_user, "Stego Drive: Encoded Image Payload")
-                            
-                    elif stego_type == 'audio':
-                        ext = '.mp3' if file.filename.lower().endswith('.mp3') else '.wav'
-                        filepath = os.path.join(static_dir, f'stego_audio_input{ext}')
-                        outpath = os.path.join(static_dir, 'stego_audio_result.wav') 
-                        
-                        file.save(filepath)
-                        success, msg = stego_engine.encode_audio(filepath, text, outpath)
-                        message = msg
-                        if success:
-                            show_download = True
-                            download_type = 'audio'
-                            log_activity(current_user, f"Stego Drive: Encoded Audio Payload ({ext.upper()})")
-                            
-            elif mode == 'decode':
-                if stego_type == 'image':
-                    filepath = os.path.join(static_dir, 'stego_upload.png')
-                    file.save(filepath)
-                    message = stego_engine.decode(filepath)
-                    log_activity(current_user, "Stego Drive: Extracted Image Payload")
-                    
-                elif stego_type == 'audio':
-                    ext = '.mp3' if file.filename.lower().endswith('.mp3') else '.wav'
-                    filepath = os.path.join(static_dir, f'stego_audio_upload{ext}')
-                    file.save(filepath)
-                    message = stego_engine.decode_audio(filepath)
-                    log_activity(current_user, f"Stego Drive: Extracted Audio Payload ({ext.upper()})")
-        else: 
-            message = "Error: Please upload a valid carrier file."
-            
-    return render_template('stego.html', message=message, show_download=show_download, download_type=download_type)
+                    # Automatic fallback: Stream file directly via send_file
+                    return send_file(
+                        io.BytesIO(output_bytes),
+                        mimetype=mime,
+                        as_attachment=True,
+                        download_name=artifact_name
+                    )
+
+        elif mode == 'decode':
+            if stego_type == 'image':
+                message = stego_engine.decode(file)
+                log_activity(current_user, "Stego Drive: Extracted Image Payload")
+            else:
+                message = stego_engine.decode_audio(file)
+                log_activity(current_user, "Stego Drive: Extracted Audio Payload")
+
+    return render_template('stego.html', message=message, show_download=show_download, download_url=download_url, download_type=download_type)
+
 
 @main_bp.route('/download_stego')
 def download_stego():
-    try: return send_file('app/static/stego_result.png', as_attachment=True, download_name='encrypted_image.png')
-    except FileNotFoundError: return send_file('static/stego_result.png', as_attachment=True, download_name='encrypted_image.png')
+    """Streams the most recently encoded image from session memory."""
+    current_user = session.get('user', 'guest_agent')
+    cached = _LAST_ENCODED_CACHE.get(current_user)
+    if cached and cached.get('mime') == 'image/png':
+        return send_file(
+            io.BytesIO(cached['bytes']),
+            mimetype='image/png',
+            as_attachment=True,
+            download_name=cached.get('download_name', 'encrypted_image.png')
+        )
+    return jsonify({"error": "No cached artifact found. Please encode an artifact first."}), 404
+
 
 @main_bp.route('/download_stego_audio')
 def download_stego_audio():
-    try: return send_file('app/static/stego_audio_result.wav', as_attachment=True, download_name='encrypted_audio.wav')
-    except FileNotFoundError: return send_file('static/stego_audio_result.wav', as_attachment=True, download_name='encrypted_audio.wav')
+    """Streams the most recently encoded audio from session memory."""
+    current_user = session.get('user', 'guest_agent')
+    cached = _LAST_ENCODED_CACHE.get(current_user)
+    if cached and cached.get('mime') == 'audio/wav':
+        return send_file(
+            io.BytesIO(cached['bytes']),
+            mimetype='audio/wav',
+            as_attachment=True,
+            download_name=cached.get('download_name', 'encrypted_audio.wav')
+        )
+    return jsonify({"error": "No cached audio artifact found. Please encode an audio artifact first."}), 404
+
+
+# --- HARDENED SERVERLESS CODE SANDBOX ---
 
 @main_bp.route('/sandbox', methods=['GET', 'POST'])
 def sandbox():
@@ -704,7 +891,7 @@ def sandbox():
     return render_template('sandbox.html', output=output, code=code)
 
 
-# --- NEW MODULE ROUTES (AI, Vault, Feed, Security Profile) ---
+# --- PASSWORD AI & PROFILER ---
 
 @main_bp.route('/password-ai', methods=['GET', 'POST'])
 def password_ai():
@@ -715,7 +902,8 @@ def password_ai():
         action = request.form.get('action')
         if action == "analyze":
             pwd_input = request.form.get('password', '')
-            if pwd_input: analysis = analyze_password_strength(pwd_input)
+            if pwd_input:
+                analysis = analyze_password_strength(pwd_input)
         elif action == "suggest":
             custom_word = request.form.get('custom_word', '')
             requested_length = int(request.form.get('length', 16))
@@ -743,10 +931,10 @@ def password_ai():
             
             insert_pos = secure_random.randint(0, len(filler_chars))
             filler_chars.insert(insert_pos, custom_word)
-            
             suggested_pwd = ''.join(filler_chars)
             
     return render_template('password.html', analysis=analysis, pwd_input=pwd_input, suggested_pwd=suggested_pwd)
+
 
 @main_bp.route('/profiler', methods=['GET', 'POST'])
 def profiler():
@@ -754,28 +942,22 @@ def profiler():
     text_input = ""
     if request.method == 'POST':
         text_input = request.form.get('bio_text', '')
-        if text_input: profile = analyze_psychology(text_input)
+        if text_input:
+            profile = analyze_psychology(text_input)
     return render_template('profiler.html', profile=profile, text_input=text_input)
 
-# --- SECURITY PROFILE DASHBOARD ROUTE ---
+
 @main_bp.route('/security-profile')
 def security_profile():
     if session.get('role') != 'user':
         return redirect('/')
     
     email = session.get('user')
-    
-    # 1. OSINT Data Extraction
-    if request.headers.getlist("X-Forwarded-For"):
-        user_ip = request.headers.getlist("X-Forwarded-For")[0]
-    else:
-        user_ip = request.remote_addr
-        
+    user_ip = get_client_ip(request)
     user_agent = request.headers.get('User-Agent', 'Unknown Environment')
     domain = email.split('@')[-1] if '@' in email else 'Unknown'
     osint_risk = "HIGH" if domain in ['gmail.com', 'yahoo.com', 'hotmail.com'] else "MODERATE"
     
-    # 2. Fetch Recent Logs from Supabase
     recent_logs = []
     if supabase is not None:
         try:
@@ -784,10 +966,8 @@ def security_profile():
         except Exception as e:
             print(f"Failed to fetch logs: {e}")
 
-    # 3. Fetch Darkweb Report
     breaches = search_breach_data(email)
     
-    # 4. Retrieve Password Analytics from Session
     pwd_score = session.get('pwd_score', 0)
     pwd_verdict = session.get('pwd_verdict', 'UNKNOWN')
     pwd_suggestion = session.get('pwd_suggestion', 'N/A')
@@ -795,7 +975,6 @@ def security_profile():
     pwd_leaks = session.get('pwd_leaks', 0)
     pwd_analytics = session.get('pwd_analytics', {})
     
-    # 5. Define Common Cybercrimes & Safeguards
     cybercrimes = [
         {
             "name": "Phishing & Spear Phishing", 
@@ -830,7 +1009,8 @@ def security_profile():
                            cybercrimes=cybercrimes)
 
 
-# --- MONGODB VAULT IMPLEMENTATION ---
+# --- MONGODB SECURE VAULT ---
+
 @main_bp.route('/vault', methods=['GET', 'POST'])
 def password_vault():
     if 'user' not in session or session.get('role') != 'user':
@@ -876,13 +1056,14 @@ def password_vault():
                     item["decrypted_password"] = "".join([chr(b ^ ord(k)) for b, k in zip(bytes_obj, extended_key)])
                 except Exception:
                     item["decrypted_password"] = "DECRYPTION_ERROR"
-                    
-        except Exception as e: print(f"[DB ERROR] Vault Fetch Failed: {e}")
+        except Exception as e:
+            print(f"[DB ERROR] Vault Fetch Failed: {e}")
 
     return render_template('vault.html', message=message, vault_data=saved_passwords)
 
 
-# --- LIVE CYBER DATA API (AJAX FETCH FOR CYBER FEED) ---
+# --- LIVE CYBER DATA & FEED ---
+
 @main_bp.route('/api/cyber-data/<category>')
 def cyber_data_api(category):
     if category == 'news':
@@ -903,19 +1084,22 @@ def cyber_data_api(category):
     elif category == 'attacks':
         prompt = """Identify 3 real, major cyber attacks or critical CVEs from recent history. Return ONLY a valid JSON array. Format: [{"title": "Attack Name", "severity": "CRITICAL", "details": "Explanation"}]"""
         data = parse_ai_json(prompt)
-        if data: return jsonify(data)
+        if data:
+            return jsonify(data)
         return jsonify([{"title": "Log4Shell", "severity": "CRITICAL", "details": "A zero-day vulnerability in Log4j. Ensure the AI Link is active."}])
             
     elif category == 'encyclopedia':
         prompt = """Select 3 distinct, common cyber attack methodologies. Return ONLY a valid JSON array. Format: [{"title": "Attack Methodology", "severity": "High", "details": "A deep dive into how attackers execute this"}]"""
         data = parse_ai_json(prompt)
-        if data: return jsonify(data)
+        if data:
+            return jsonify(data)
         return jsonify([{"title": "Phishing", "severity": "High", "details": "Fraudulent attempt to obtain sensitive data. AI offline."}])
             
     elif category == 'learning':
         prompt = """Select 3 essential cybersecurity concepts or tools for a student to learn right now. Return ONLY a valid JSON array. Format: [{"title": "Topic Name", "difficulty": "Intermediate", "details": "Detailed explanation"}]"""
         data = parse_ai_json(prompt)
-        if data: return jsonify(data)
+        if data:
+            return jsonify(data)
         return jsonify([{"title": "Buffer Overflow", "difficulty": "Advanced", "details": "Occurs when a program overwrites adjacent memory locations. AI offline."}])
             
     return jsonify([])

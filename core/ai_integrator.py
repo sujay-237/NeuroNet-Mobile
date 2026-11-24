@@ -3,12 +3,15 @@ from google.genai import types
 import json
 import time
 import os
+from core.cloud_cache import CloudCacheManager
 
 class NeuroAI:
-    def __init__(self):
+    def __init__(self, cache_manager=None):
         self.active_clients = []
         self.current_client_idx = 0
         self.is_active = False
+        self.cache_manager = cache_manager or CloudCacheManager()
+        self.api_keys_count = 0
         
         # Load up to 5 keys from the environment variables
         api_keys = []
@@ -17,11 +20,13 @@ class NeuroAI:
             if key:
                 api_keys.append(key)
         
-        # Fallback to the original single key if none of the numbered ones exist
+        # Fallback to the single key if none of the numbered ones exist
         if not api_keys:
             single_key = os.getenv("GOOGLE_API_KEY")
             if single_key:
                 api_keys.append(single_key)
+
+        self.api_keys_count = len(api_keys)
 
         if not api_keys:
             print("[AI WARNING] No GOOGLE_API_KEYs found in environment variables.")
@@ -29,19 +34,30 @@ class NeuroAI:
             self.is_active = False
             return
 
-        # Initialize a GenAI client for each valid key
+        # Initialize a GenAI client for each valid key with v1beta enabled for JSON mode
         for idx, key in enumerate(api_keys):
             try:
-                client = genai.Client(api_key=key)
+                client = genai.Client(api_key=key, http_options=types.HttpOptions(api_version='v1beta'))
                 self.active_clients.append(client)
             except Exception as e:
                 print(f"[AI WARNING] Failed to initialize client for key {idx+1}: {e}")
 
         if self.active_clients:
             self.is_active = True
-            print(f"[AI SYSTEM] Connected to Google Gemini with {len(self.active_clients)} active keys.")
+            print(f"[AI SYSTEM] Connected to Google Gemini with {len(self.active_clients)} active keys in Multi-Key Pool.")
         else:
             print("[AI SYSTEM] Defaulting to Local Simulation Mode.")
+
+    def get_pool_status(self):
+        """Returns health telemetry for the Google Gemini Multi-Key Pool."""
+        return {
+            "status": "ONLINE" if self.is_active else "FALLBACK",
+            "active": self.is_active,
+            "total_keys_configured": self.api_keys_count,
+            "active_clients_count": len(self.active_clients),
+            "strategy": "Round-Robin with Automatic Multi-Key Failover",
+            "model": "gemini-2.5-flash"
+        }
 
     def _execute_with_round_robin(self, api_call_func):
         """
@@ -82,21 +98,34 @@ class NeuroAI:
         try:
             return self._query_google_ai(payload, wpm, backspaces)
         except Exception as e:
-            # This catch triggers if ALL 5 keys fail during _query_google_ai
             print(f"[AI ERROR] API Failed completely ({e}). Switching to Simulation...")
             return self._local_simulation(payload, wpm, backspaces)
 
     def osint_scan(self, query):
+        """
+        Dark Web OSINT scan with Distributed MongoDB TTL Cloud Caching (24h).
+        Serves instant cached intelligence when available, reducing latency and API consumption.
+        """
+        query_cleaned = str(query).strip()
+
+        # 1. Check Cloud Cache First
+        cached_result = self.cache_manager.get_osint_cache(query_cleaned)
+        if cached_result:
+            print(f"[CLOUD CACHE HIT] Serving cached intelligence for target: '{query_cleaned}'")
+            return cached_result
+
+        # 2. If Cache Miss and AI Offline: Return graceful fallback
         if not self.is_active:
             return {
                 "risk_level": "UNKNOWN",
                 "summary": "AI Neural Link Offline. Cannot retrieve live intelligence.",
-                "breaches": ["System Offline"],
-                "recommendation": "Check API Key configuration."
+                "breaches": [{"source": "System Offline", "data": "Local simulation active", "date": "NOW"}],
+                "recommendation": "Check API Key configuration.",
+                "cached": False
             }
 
         prompt = f"""
-        Act as a Dark Web Threat Analyst. The user is searching for intelligence on: "{query}".
+        Act as a Dark Web Threat Analyst. The user is searching for intelligence on: "{query_cleaned}".
         
         1. If the query is a domain/company: Summarize known data breaches, reputational history, and security posture.
         2. If the query is an email/user: Explain general risks associated with this format or domain (DO NOT generate fake PII or fake passwords).
@@ -124,12 +153,17 @@ class NeuroAI:
             return json.loads(response.text)
 
         try:
-            return self._execute_with_round_robin(api_call)
+            live_result = self._execute_with_round_robin(api_call)
+            live_result["cached"] = False
+            # Store fresh intelligence in MongoDB 24h TTL cache
+            self.cache_manager.set_osint_cache(query_cleaned, live_result)
+            return live_result
         except Exception as e:
             return {
                 "risk_level": "ERROR",
                 "summary": "Connection to Threat Intel Database interrupted.",
-                "breaches": [{"source": "API Error", "data": str(e), "date": "NOW"}]
+                "breaches": [{"source": "API Error", "data": str(e), "date": "NOW"}],
+                "cached": False
             }
     
     def chat(self, user_input):
@@ -179,7 +213,7 @@ class NeuroAI:
 
     def _local_simulation(self, payload, wpm, backspaces):
         print("[SYSTEM] Engaged Local Behavioral Analysis Engine (Simulation)...")
-        time.sleep(0.5) 
+        time.sleep(0.1)
 
         payload_lower = payload.lower()
         if "union" in payload_lower:

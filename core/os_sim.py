@@ -1,25 +1,38 @@
-import threading
 import time
 
 class Sandbox:
     def __init__(self):
-        self.lock = threading.Lock()
+        pass
 
     def run_in_sandbox(self, payload):
         """
-        Spawns a new thread to process the request, simulating
-        OS process isolation to prevent main thread blocking.
+        Executes syscall and payload inspection synchronously.
+        Serverless functions terminate background threads upon HTTP response return,
+        so checks run synchronously in milliseconds without blocking.
         """
-        t = threading.Thread(target=self._process_safe, args=(payload,))
-        t.start()
-        # We don't join() here to show asynchronous handling capability
+        return self._process_safe(payload)
 
     def _process_safe(self, payload):
-        with self.lock:
-            # Simulate checking file permissions
-            # If the attacker tries to use "cat /etc/passwd", we trap it here.
-            if "/etc/passwd" in payload or "cmd.exe" in payload:
-                print(f"[OS KERNEL] BLOCKED: Malicious syscall detected in payload.")
-            else:
-                # Simulate processing time
-                time.sleep(0.1)
+        payload_str = str(payload)
+        suspicious_syscalls = [
+            "/etc/passwd", "cmd.exe", "powershell", "/bin/sh",
+            "rm -rf", "wget", "curl", "chmod", "iptables"
+        ]
+        
+        detected = [sc for sc in suspicious_syscalls if sc in payload_str.lower()]
+        
+        if detected:
+            log_msg = f"[OS KERNEL] BLOCKED: Malicious syscall(s) detected: {', '.join(detected)}"
+            return {
+                "status": "BLOCKED",
+                "detected": detected,
+                "message": log_msg,
+                "isolated": True
+            }
+        else:
+            return {
+                "status": "CLEARED",
+                "detected": [],
+                "message": "[OS KERNEL] Syscall trace cleared. Sandbox integrity intact.",
+                "isolated": True
+            }

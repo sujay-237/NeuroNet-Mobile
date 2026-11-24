@@ -12,13 +12,13 @@ def create_app():
                 template_folder='app/templates',
                 static_folder='app/static') 
     
-    # Set a secret key for security (reads from env or uses a default)
+    # Secret key for session security (reads from environment or default)
     app.secret_key = os.getenv("FLASK_SECRET_KEY", "default_insecure_key_for_dev")
     
     # Enable CSRF Protection
     csrf.init_app(app)
 
-    # Define a strict Content Security Policy (CSP) to prevent XSS
+    # Content Security Policy (CSP) tailored for Vercel Serverless & CDN assets
     csp = {
         'default-src': [
             '\'self\'',
@@ -26,7 +26,8 @@ def create_app():
         'script-src': [
             '\'self\'',
             '\'unsafe-inline\'', 
-            'https://cdn.jsdelivr.net' # Required for Bootstrap JS modals/dropdowns
+            'https://cdn.jsdelivr.net',
+            'https://cdnjs.cloudflare.com'
         ],
         'style-src': [
             '\'self\'',
@@ -42,20 +43,24 @@ def create_app():
         ],
         'img-src': [
             '\'self\'',
-            'data:'
+            'data:',
+            'https:'
+        ],
+        'connect-src': [
+            '\'self\'',
+            'https:'
         ]
     }
 
-    # Initialize Talisman for security headers (force_https=False for local dev)
+    # Initialize Talisman for security headers (force_https=False allows Vercel edge SSL termination)
     Talisman(app, content_security_policy=csp, force_https=False)
     
     app.register_blueprint(main_bp)
     return app
 
-# Initialize app globally for Gunicorn
+# Expose app globally for Vercel (@vercel/python) and Gunicorn
 app = create_app()
 
 if __name__ == "__main__":
     print("[SYSTEM] Neuro-Net AI Systems: ONLINE")
-    # In local dev, this runs. In production, Gunicorn uses the 'app' variable above.
     app.run(debug=True, port=5000, threaded=True)

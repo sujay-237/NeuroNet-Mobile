@@ -299,9 +299,15 @@
             
             {% if show_download %}
             <br>
+            {% if download_url %}
+            <a href="{{ download_url }}" class="download-link" target="_blank" download>
+                <i class="fas fa-cloud-download-alt"></i> DOWNLOAD FROM CLOUD STORAGE
+            </a>
+            {% else %}
             <a href="{{ url_for('main.download_stego' if download_type == 'image' else 'main.download_stego_audio') }}" class="download-link">
                 <i class="fas fa-download"></i> DOWNLOAD SECURED ARTIFACT
             </a>
+            {% endif %}
             {% endif %}
         </div>
         {% endif %}
